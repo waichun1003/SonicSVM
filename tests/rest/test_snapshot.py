@@ -40,8 +40,8 @@ class TestSnapshot:
 
     @pytest.mark.xfail(
         reason="F-REST-001: Floating-point price artifacts — prices like 66013.90000000001 "
-        "instead of clean decimals",
-        strict=True,
+        "instead of clean decimals (~70% reproduction rate)",
+        strict=False,
     )
     @pytest.mark.finding
     async def test_snapshot_prices_clean_decimals(self, snapshot_route) -> None:
@@ -64,8 +64,8 @@ class TestSnapshot:
         )
 
     @pytest.mark.xfail(
-        reason="F-REST-002: Crossed order book — best bid sometimes exceeds best ask",
-        strict=True,
+        reason="F-REST-002: Crossed order book — best bid sometimes exceeds best ask (~30-50%)",
+        strict=False,
     )
     @pytest.mark.finding
     async def test_snapshot_book_not_crossed(self, snapshot_route) -> None:

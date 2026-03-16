@@ -83,8 +83,8 @@ class TestBookDeltaSchema:
 
     @pytest.mark.xfail(
         reason="F-WS-002: Floating-point price artifacts in book_delta -- prices like "
-        "65922.40000000001 instead of clean decimals",
-        strict=True,
+        "65922.40000000001 instead of clean decimals (~60% reproduction rate)",
+        strict=False,
     )
     @pytest.mark.finding
     async def test_book_delta_prices_clean_decimals(

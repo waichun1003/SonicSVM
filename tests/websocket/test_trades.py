@@ -89,8 +89,8 @@ class TestTradeSchema:
 
     @pytest.mark.xfail(
         reason="F-WS-003: Floating-point price artifacts in trade messages -- "
-        "prices like 65921.90000000001 instead of clean decimals",
-        strict=True,
+        "prices like 65921.90000000001 instead of clean decimals (~40% reproduction rate)",
+        strict=False,
     )
     @pytest.mark.finding
     async def test_trade_prices_clean_decimals(self, market_feed_route: MarketFeedRoute) -> None:
