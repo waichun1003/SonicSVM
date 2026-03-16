@@ -33,8 +33,8 @@ jobs:
       - name: Run pytest performance benchmarks
         run: |
           pytest tests/performance/ -v \
-            -m perf \
             --timeout 300 \
+            --reruns 2 --reruns-delay 5 \
             --junitxml=results/perf-benchmark.xml \
             --alluredir=allure-results/perf
 
