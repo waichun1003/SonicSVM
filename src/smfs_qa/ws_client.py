@@ -28,8 +28,19 @@ class WSTestClient:
 
     async def connect(self) -> WSTestClient:
         QALogger.log_ws_connect(self.url)
-        self._ws = await websockets.connect(self.url, open_timeout=self.timeout)
-        return self
+        last_err: Exception | None = None
+        for attempt in range(3):
+            try:
+                self._ws = await websockets.connect(self.url, open_timeout=self.timeout)
+                return self
+            except websockets.exceptions.InvalidStatus as e:
+                last_err = e
+                if e.response.status_code == 503 and attempt < 2:
+                    QALogger.warn(f"WS connect got 503 (attempt {attempt + 1}/3), retrying...")
+                    await asyncio.sleep(2 * (attempt + 1))
+                else:
+                    raise
+        raise last_err  # type: ignore[misc]
 
     async def close(self) -> None:
         if self._ws:
