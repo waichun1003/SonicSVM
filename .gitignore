@@ -1,0 +1,56 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Virtual environment
+.venv/
+venv/
+ENV/
+
+# Test artifacts
+results/
+allure-results/
+allure-report/
+.pytest_cache/
+htmlcov/
+.coverage
+*.junit.xml
+
+# Solana
+test-ledger/
+/tmp/test-ledger/
+
+# IDE
+.idea/
+.vscode/
+.windsurf/
+*.swp
+*.swo
+
+# Environment
+.env
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Ruff
+.ruff_cache/
+
+# mypy
+.mypy_cache/
+
+# AI tooling
+.claude/
+docs/superpowers/
+skills-lock.json
+
+# AI agents
+.agents/

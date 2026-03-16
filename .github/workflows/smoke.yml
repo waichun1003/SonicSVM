@@ -1,0 +1,71 @@
+name: Smoke Test
+
+on:
+  push:
+    branches: [main, develop, "feature/**"]
+  pull_request:
+    branches: [main]
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install ruff
+      - run: ruff check src/ tests/ conftest.py
+      - run: ruff format --check src/ tests/ conftest.py
+
+  typecheck:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install -e ".[test,dev]"
+      - run: mypy src/smfs_qa/ --ignore-missing-imports
+
+  smoke:
+    needs: [lint, typecheck]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -e ".[test]"
+
+      - name: Smoke tests (core endpoints + connections + data integrity)
+        run: |
+          pytest \
+            tests/rest/test_health.py \
+            tests/rest/test_markets.py \
+            tests/rest/test_stats.py \
+            tests/rest/test_orderbook.py \
+            tests/rest/test_orders.py \
+            tests/rest/test_error_format.py \
+            tests/websocket/test_connection.py \
+            tests/websocket/test_ping_pong.py \
+            tests/websocket/test_sequence.py \
+            tests/solana/test_stream_connect.py \
+            tests/solana/test_stream_ping.py \
+            tests/solana/test_stream_schema.py \
+            -v --timeout 60 --reruns 2 \
+            --junitxml=results/smoke.xml
+
+      - name: Upload smoke results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: smoke-results
+          path: results/

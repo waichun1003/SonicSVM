@@ -1,0 +1,74 @@
+name: Full Regression
+
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: "0 6 * * *"  # Daily at 6am UTC
+  workflow_dispatch:
+
+jobs:
+  regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -e ".[test,dev]"
+
+      - name: Create results directory
+        run: mkdir -p results
+
+      - name: Lint check
+        run: ruff check src/ tests/ conftest.py
+
+      - name: Run REST API tests
+        run: |
+          pytest tests/rest/ -v \
+            --reruns 3 --reruns-delay 2 \
+            --timeout 60 \
+            --junitxml=results/rest.xml \
+            --alluredir=allure-results/rest
+
+      - name: Run WebSocket tests
+        run: |
+          pytest tests/websocket/ -v \
+            --reruns 3 --reruns-delay 2 \
+            --timeout 120 \
+            --junitxml=results/websocket.xml \
+            --alluredir=allure-results/websocket
+
+      - name: Run Solana stream tests
+        run: |
+          pytest tests/solana/ -v \
+            --reruns 3 --reruns-delay 2 \
+            --timeout 180 \
+            --junitxml=results/solana.xml \
+            --alluredir=allure-results/solana
+
+      - name: Test summary
+        if: always()
+        run: |
+          echo "## Regression Test Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          for f in results/*.xml; do
+            suite=$(basename "$f" .xml)
+            tests=$(grep -o 'tests="[0-9]*"' "$f" 2>/dev/null | head -1 | grep -o '[0-9]*')
+            fails=$(grep -o 'failures="[0-9]*"' "$f" 2>/dev/null | head -1 | grep -o '[0-9]*')
+            echo "| $suite | ${tests:-0} tests | ${fails:-0} failures |" >> $GITHUB_STEP_SUMMARY
+          done
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: regression-results
+          path: |
+            results/
+            allure-results/

@@ -1,0 +1,38 @@
+[
+  {
+    "name": "API Defects (xfail findings)",
+    "description": "Known API defects documented as findings. Tests assert correct behavior with xfail(strict=True).",
+    "matchedStatuses": ["skipped"],
+    "messageRegex": ".*F-REST-.*|.*F-WS-.*|.*F-SOL-.*|.*F-PERF-.*"
+  },
+  {
+    "name": "Floating-Point Precision Issues",
+    "description": "IEEE 754 double-precision artifacts in price values (F-REST-001, F-WS-002, F-WS-003)",
+    "matchedStatuses": ["skipped"],
+    "messageRegex": ".*[Ff]loating.*point.*|.*price.*artifact.*"
+  },
+  {
+    "name": "Solana Stream Issues",
+    "description": "Solana transaction stream delivery and filter issues (F-SOL-001, F-SOL-002)",
+    "matchedStatuses": ["skipped"],
+    "messageRegex": ".*F-SOL-.*"
+  },
+  {
+    "name": "Performance SLA Breaches",
+    "description": "Endpoints exceeding SLA latency thresholds (F-PERF-001)",
+    "matchedStatuses": ["skipped"],
+    "messageRegex": ".*F-PERF-.*|.*bimodal.*"
+  },
+  {
+    "name": "Test Infrastructure Failures",
+    "description": "Transient network errors, timeouts, or test framework issues",
+    "matchedStatuses": ["broken"],
+    "messageRegex": ".*[Tt]imeout.*|.*[Cc]onnection.*refused.*|.*DNS.*"
+  },
+  {
+    "name": "Product Bugs",
+    "description": "Unexpected failures that indicate real product defects",
+    "matchedStatuses": ["failed"],
+    "messageRegex": ".*"
+  }
+]

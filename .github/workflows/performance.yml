@@ -1,0 +1,86 @@
+name: Performance Tests
+
+on:
+  workflow_run:
+    workflows: ["Full Regression"]
+    types: [completed]
+  schedule:
+    - cron: "0 6 * * 1"  # Weekly Monday 6am UTC
+  workflow_dispatch:
+
+jobs:
+  benchmark:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    if: >
+      github.event_name == 'workflow_dispatch' ||
+      github.event_name == 'schedule' ||
+      (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success')
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -e ".[test,dev]"
+
+      - name: Create results directory
+        run: mkdir -p results
+
+      - name: Run pytest performance benchmarks
+        run: |
+          pytest tests/performance/ -v \
+            -m perf \
+            --timeout 300 \
+            --junitxml=results/perf-benchmark.xml \
+            --alluredir=allure-results/perf
+
+      - name: Upload benchmark results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: perf-benchmark-results
+          path: |
+            results/
+            allure-results/
+
+  locust:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    if: >
+      github.event_name == 'workflow_dispatch' ||
+      github.event_name == 'schedule' ||
+      (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success')
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -e ".[test,load]"
+
+      - name: Create results directory
+        run: mkdir -p results
+
+      - name: Locust load test (50 users, 60s)
+        run: |
+          locust -f src/smfs_qa/locustfile.py \
+            --headless \
+            --users 50 --spawn-rate 5 \
+            --run-time 60s \
+            --host https://interviews-api.sonic.game \
+            --csv=results/locust \
+            --html=results/locust-report.html
+
+      - name: Upload Locust results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: locust-results
+          path: results/
