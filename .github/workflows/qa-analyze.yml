@@ -1,0 +1,110 @@
+name: QA Failure Analysis
+
+on:
+  workflow_run:
+    workflows: ["Smoke Test", "Full Regression"]
+    types: [completed]
+
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    if: github.event.workflow_run.conclusion == 'failure'
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Download test artifacts
+        uses: actions/download-artifact@v4
+        with:
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: artifacts/
+        continue-on-error: true
+
+      - name: Find JUnit XML results
+        id: find-results
+        run: |
+          mkdir -p results
+          find artifacts/ -name "*.xml" -exec cp {} results/ \; 2>/dev/null || true
+          if ls results/*.xml 1>/dev/null 2>&1; then
+            echo "found=true" >> $GITHUB_OUTPUT
+            echo "Found XML files:"
+            ls -la results/*.xml
+          else
+            echo "found=false" >> $GITHUB_OUTPUT
+            echo "No JUnit XML artifacts found -- using gh CLI to get logs"
+          fi
+
+      - name: Analyze from logs (fallback)
+        if: steps.find-results.outputs.found != 'true'
+        run: |
+          echo "## QA Failure Analysis" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Workflow:** ${{ github.event.workflow_run.name }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Run:** [#${{ github.event.workflow_run.id }}](${{ github.event.workflow_run.html_url }})" >> $GITHUB_STEP_SUMMARY
+          echo "**Status:** ${{ github.event.workflow_run.conclusion }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "No JUnit XML artifacts available. Check the [workflow run logs](${{ github.event.workflow_run.html_url }}) directly." >> $GITHUB_STEP_SUMMARY
+
+      - name: Run failure analysis
+        if: steps.find-results.outputs.found == 'true'
+        run: |
+          python scripts/analyze_results.py results/*.xml --findings FINDINGS.md > analysis.md
+          cat analysis.md
+
+          # Post to Job Summary
+          echo "## QA Failure Analysis" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Workflow:** ${{ github.event.workflow_run.name }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Run:** [#${{ github.event.workflow_run.id }}](${{ github.event.workflow_run.html_url }})" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          cat analysis.md >> $GITHUB_STEP_SUMMARY
+
+      - name: Comment on PR (if applicable)
+        if: steps.find-results.outputs.found == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+
+            // Find the PR associated with the workflow run
+            const headSha = '${{ github.event.workflow_run.head_sha }}';
+            const { data: prs } = await github.rest.pulls.list({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              head: `${context.repo.owner}:${context.payload.workflow_run.head_branch}`,
+            });
+
+            if (prs.length === 0) {
+              console.log('No open PR found for this branch -- skipping comment');
+              return;
+            }
+
+            const prNumber = prs[0].number;
+            let analysis = '';
+            try {
+              analysis = fs.readFileSync('analysis.md', 'utf8');
+            } catch (e) {
+              console.log('No analysis.md found');
+              return;
+            }
+
+            const body = `### QA Failure Analysis\n\n` +
+              `**Workflow:** ${{ github.event.workflow_run.name }}\n` +
+              `**Run:** [#${{ github.event.workflow_run.id }}](${{ github.event.workflow_run.html_url }})\n\n` +
+              analysis +
+              `\n\n---\n*Posted automatically by [qa-analyze.yml](.github/workflows/qa-analyze.yml)*`;
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: prNumber,
+              body: body,
+            });
+
+            console.log(`Posted analysis comment on PR #${prNumber}`);

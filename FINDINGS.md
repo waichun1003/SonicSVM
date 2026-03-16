@@ -537,20 +537,20 @@ This inconsistency complicates error handling for API consumers who must handle 
 
 ## Test Mapping
 
-| Finding ID | Test File | Test Name | Marker |
-|-----------|-----------|-----------|--------|
-| F-INFRA-001 | `src/smfs_qa/client.py` | N/A (mitigated in framework) | N/A |
-| F-REST-001 | `tests/rest/test_snapshot.py` | `test_snapshot_prices_clean_decimals` | `@pytest.mark.xfail(strict=True)`, `@pytest.mark.finding` |
-| F-REST-002 | `tests/rest/test_snapshot.py` | `test_snapshot_book_not_crossed` | `@pytest.mark.xfail(strict=True)`, `@pytest.mark.finding` |
-| F-REST-004 | `tests/rest/test_error_format.py` | `test_error_content_type_is_json` (x3 parameterized) | `@pytest.mark.xfail(strict=True)`, `@pytest.mark.finding` |
-| F-WS-001 | `tests/websocket/test_connection.py` | `test_invalid_market_id_rejected` | `@pytest.mark.xfail(strict=True)`, `@pytest.mark.finding` |
-| F-WS-002 | `tests/websocket/test_book_delta.py` | `test_book_delta_prices_clean_decimals` | `@pytest.mark.xfail(strict=True)`, `@pytest.mark.finding` |
-| F-WS-003 | `tests/websocket/test_trades.py` | `test_trade_prices_clean_decimals` | `@pytest.mark.xfail(strict=True)`, `@pytest.mark.finding` |
-| F-SOL-001 | `tests/solana/test_subscribe.py` | `test_subscribe_bare_receives_data`, `test_subscribe_system_program_receives_data`, `test_subscribe_spl_token_receives_data`, `test_subscribe_reproduction_rate`, `test_subscribe_receives_acknowledgment` (xfail) | 4 pass, 1 xfail |
-| F-SOL-002 | `tests/solana/test_subscribe_filters.py` | `test_subscribe_multiple_programs`, `test_subscribe_empty_programs_array`, `test_any_non_hello_message_within_60s` (xfail) | 2 pass, 1 xfail |
-| F-PERF-001 | `tests/performance/test_rest_latency.py` | `test_stats_p95_within_sla` (xfail), `test_stats_p99_within_sla` (xfail) | `@pytest.mark.xfail(strict=True)` |
-| F-PERF-002 | `tests/performance/test_orders_perf.py` | `test_burst_orders_rate_limit_detected` | Documented (tolerance test, not xfail) |
-| F-PERF-003 | `tests/performance/test_latency_under_load.py` | `test_snapshot_error_rate` | Documented (tolerance threshold <20%, not xfail) |
+| Finding ID | Test File | Test Name | xfail | Strict |
+|-----------|-----------|-----------|-------|--------|
+| F-INFRA-001 | `src/smfs_qa/client.py` | N/A (mitigated in framework) | N/A | N/A |
+| F-REST-001 | `tests/rest/test_snapshot.py` | `test_snapshot_prices_clean_decimals` | Yes | No (~70% repro) |
+| F-REST-002 | `tests/rest/test_snapshot.py` | `test_snapshot_book_not_crossed` | Yes | No (~30-50% repro) |
+| F-REST-004 | `tests/rest/test_error_format.py` | `test_error_content_type_is_json` (x3) | Yes | Yes (100% repro) |
+| F-WS-001 | `tests/websocket/test_connection.py` | `test_invalid_market_id_rejected` | Yes | Yes (100% repro) |
+| F-WS-002 | `tests/websocket/test_book_delta.py` | `test_book_delta_prices_clean_decimals` | Yes | No (~60% repro) |
+| F-WS-003 | `tests/websocket/test_trades.py` | `test_trade_prices_clean_decimals` | Yes | No (~40% repro) |
+| F-SOL-001 | `tests/solana/test_subscribe.py` | `test_subscribe_receives_acknowledgment` | Yes | Yes (100% repro) |
+| F-SOL-002 | `tests/solana/test_subscribe_filters.py` | `test_any_non_hello_message_within_60s` | Yes | Yes (intermittent) |
+| F-PERF-001 | `tests/performance/test_rest_latency.py` | `test_p95`, `test_p99` | Yes | Yes (100% repro) |
+| F-PERF-002 | `tests/performance/test_orders_perf.py` | `test_burst_orders_rate_limit_detected` | No | Tolerance test |
+| F-PERF-003 | `tests/performance/test_latency_under_load.py` | `test_snapshot_error_rate` | No | Tolerance (<20%) |
 
 ---
 
@@ -627,4 +627,4 @@ This inconsistency complicates error handling for API consumers who must handle 
 
 ---
 
-*All findings are verified through automated pytest tests with `strict=True` xfail markers. When any of these issues are fixed server-side, the corresponding test will produce an XPASS (unexpected pass) failure, signaling that the finding should be re-evaluated and the xfail marker removed.*
+*All findings are verified through automated pytest tests with xfail markers. Deterministic findings (100% reproduction rate) use `strict=True` -- fixing them will cause an XPASS failure, signaling the finding is resolved. Intermittent findings use `strict=False` to avoid false CI failures on runs where the bug does not manifest.*

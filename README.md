@@ -10,7 +10,7 @@ A comprehensive quality audit of the **Sonic Market Feed Service** (SMFS) on the
 **Date:** 2026-03-16
 **Auditor:** Samuel Cheng
 
-**208 automated tests** | **12 findings** | **3-phase CI pipeline**
+**208 automated tests** | **12 findings** | **4-phase CI pipeline** | **6 agent skills**
 
 ## System Under Test
 
@@ -104,13 +104,34 @@ Full details in [FINDINGS.md](FINDINGS.md).
 
 ## CI/CD Pipeline
 
-Three-phase pipeline with escalating scope:
+Four-phase pipeline with escalating scope and automated failure analysis:
 
 | Phase | Workflow | Trigger | Scope | Timeout |
 |-------|----------|---------|-------|---------|
-| Smoke | `smoke.yml` | Every push/PR | ~50 core + data integrity tests | 5 min |
+| Smoke | `smoke.yml` | Every push/PR | Lint, mypy, ~50 core tests | 5 min |
 | Regression | `regression.yml` | Push to main, daily 6am UTC | Full functional suite | 20 min |
 | Performance | `performance.yml` | After regression, weekly Monday | 38 benchmarks + Locust load | 30 min |
+| QA Analysis | `qa-analyze.yml` | When smoke or regression fails | Failure classification + PR comment | 5 min |
+
+The QA Analysis workflow automatically classifies failures as transient, rate-limited, known findings, or new bugs and posts a summary on the PR.
+
+## Agent Skills
+
+Six reusable [Agent Skills](https://github.com/vercel-labs/skills) in `.agents/skills/` that extend the QA framework. Compatible with Cursor, Claude Code, Copilot, and 38+ other AI agents.
+
+| Skill | Purpose | Inspired By |
+|-------|---------|-------------|
+| `doc-reviewer` | Review API docs, find coverage gaps | [addyosmani /spec + /review](https://github.com/addyosmani/agent-skills) |
+| `testcase-generator` | Generate pytest tests following project conventions | [LambdaTest pytest skill](https://github.com/LambdaTest/agent-skills) |
+| `ci-watcher` | Diagnose CI failures, apply minimal patches | [tobrun/FIX_CI](https://gist.github.com/tobrun/68311698160d7ca1e354dfe522acb592) |
+| `failure-analyzer` | Classify test failures, cross-reference findings | Custom |
+| `test-reporter` | Update all deliverable docs with fresh results | [addyosmani /ship](https://github.com/addyosmani/agent-skills) |
+| `qa-orchestrator` | Chain skills together for end-to-end QA cycles | Custom |
+
+Install via the [skills CLI](https://github.com/vercel-labs/skills):
+```bash
+npx skills add ./  # installs from this repo's .agents/skills/
+```
 
 ## Deliverables
 
@@ -119,9 +140,10 @@ Three-phase pipeline with escalating scope:
 | 1 | [TEST_PLAN.md](TEST_PLAN.md) | Testing strategy, risk analysis, priority matrix |
 | 2 | `tests/` (208 tests) | Automated test suite covering REST, WebSocket, Solana, and performance |
 | 3 | [FINDINGS.md](FINDINGS.md) | 12 findings with severity, reproduction steps, and root cause analysis |
-| 4 | `.github/workflows/` | Three-phase CI: smoke, regression, performance |
+| 4 | `.github/workflows/` | 4-phase CI: smoke, regression, performance, QA analysis |
 | 5 | [PERFORMANCE.md](PERFORMANCE.md) | Latency benchmarks and Locust load test results |
-| 6 | This README | Project setup, architecture, and testing strategy |
+| 6 | `.agents/skills/` | 6 agent skills for automated QA workflows |
+| 7 | This README | Project setup, architecture, and testing strategy |
 
 ## Why Python/pytest
 

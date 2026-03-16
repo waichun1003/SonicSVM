@@ -47,10 +47,7 @@ Thumbs.db
 # mypy
 .mypy_cache/
 
-# AI tooling
+# AI tooling (internal config, not skills)
 .claude/
 docs/superpowers/
 skills-lock.json
-
-# AI agents
-.agents/
