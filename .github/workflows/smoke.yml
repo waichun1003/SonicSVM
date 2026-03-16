@@ -51,7 +51,7 @@ jobs:
             tests/rest/test_health.py \
             tests/rest/test_markets.py \
             tests/rest/test_stats.py \
-            tests/rest/test_orderbook.py \
+            tests/rest/test_snapshot.py \
             tests/rest/test_orders.py \
             tests/rest/test_error_format.py \
             tests/websocket/test_connection.py \
