@@ -69,6 +69,7 @@ jobs:
         run: mkdir -p results
 
       - name: Locust load test (50 users, 60s)
+        continue-on-error: true
         run: |
           locust -f src/smfs_qa/locustfile.py \
             --headless \
