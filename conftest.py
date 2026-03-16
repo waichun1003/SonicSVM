@@ -45,6 +45,7 @@ def _preserve_allure_history():
             shutil.rmtree(history_dst)
         shutil.copytree(history_src, history_dst)
 
+
 BASE_URL = "https://interviews-api.sonic.game"
 WS_BASE_URL = "wss://interviews-api.sonic.game"
 

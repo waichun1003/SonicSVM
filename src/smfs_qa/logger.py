@@ -91,8 +91,7 @@ class QALogger:
             )
         with allure.step(f"Assert HTTP {expected} on {endpoint} (got {actual})"):
             assert actual == expected, (
-                f"Expected HTTP {expected}, got {actual} on {endpoint}\n"
-                f"Body: {response.text[:500]}"
+                f"Expected HTTP {expected}, got {actual} on {endpoint}\nBody: {response.text[:500]}"
             )
 
     @classmethod
@@ -105,9 +104,7 @@ class QALogger:
             assert actual == expected, f"{label}: expected {expected!r}, got {actual!r}"
 
     @classmethod
-    def assert_true(
-        cls, condition: bool, pass_msg: str = "", fail_msg: str = ""
-    ) -> None:
+    def assert_true(cls, condition: bool, pass_msg: str = "", fail_msg: str = "") -> None:
         label = pass_msg if condition else (fail_msg or pass_msg)
         if condition:
             cls._log("PASS", label)
@@ -133,9 +130,7 @@ class QALogger:
         else:
             cls._log("FAIL", f"{label}: {actual:.2f} >= {threshold:.2f}")
         with allure.step(f"Assert {label}: {actual:.2f} < {threshold:.2f}"):
-            assert actual < threshold, (
-                f"{label}: {actual:.2f} exceeds threshold {threshold:.2f}"
-            )
+            assert actual < threshold, f"{label}: {actual:.2f} exceeds threshold {threshold:.2f}"
 
     # --- Logging ---
 

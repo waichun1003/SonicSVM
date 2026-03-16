@@ -79,9 +79,7 @@ class TestReorgDetection:
                 f"{rollback_count} reversals in {len(slots)} transactions",
             )
 
-    async def test_no_large_rollbacks(
-        self, solana_stream_route: SolanaStreamRoute
-    ) -> None:
+    async def test_no_large_rollbacks(self, solana_stream_route: SolanaStreamRoute) -> None:
         """Any rollbacks should be shallow (<=4 slots).
 
         Deep rollbacks (>4 slots) would indicate a serious fork or indexer bug,
@@ -143,9 +141,7 @@ class TestReorgDetection:
 
             for idx in result["rollbacks"]:
                 rolledback_slot = slots[idx - 1]
-                redelivered = any(
-                    s == rolledback_slot for s in slots[idx:]
-                )
+                redelivered = any(s == rolledback_slot for s in slots[idx:])
                 QALogger.info(
                     f"Rolled-back slot {rolledback_slot}: "
                     f"{'re-delivered' if redelivered else 'NOT re-delivered'} "
@@ -158,9 +154,7 @@ class TestReorgDetection:
 class TestRollbackRateMeasurement:
     """Statistical measurement of rollback rates."""
 
-    async def test_rollback_rate_measurement(
-        self, solana_stream_route: SolanaStreamRoute
-    ) -> None:
+    async def test_rollback_rate_measurement(self, solana_stream_route: SolanaStreamRoute) -> None:
         """Measure rollback rate across a longer collection window.
 
         Collects as many transactions as possible in a 40s window and
@@ -197,9 +191,7 @@ class TestRollbackRateMeasurement:
             QALogger.info(f"Gaps: {gap_count}")
 
             if result["gaps"]:
-                gap_sizes = [
-                    slots[i] - slots[i - 1] for i in result["gaps"]
-                ]
+                gap_sizes = [slots[i] - slots[i - 1] for i in result["gaps"]]
                 QALogger.info(f"Gap sizes: min={min(gap_sizes)}, max={max(gap_sizes)}")
 
             QALogger.assert_true(

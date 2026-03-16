@@ -185,7 +185,5 @@ class SolanaTransaction(BaseModel):
         from smfs_qa.solana import is_valid_solana_signature
 
         if not is_valid_solana_signature(v):
-            raise ValueError(
-                f"Invalid Solana signature (failed solders Ed25519 validation): {v}"
-            )
+            raise ValueError(f"Invalid Solana signature (failed solders Ed25519 validation): {v}")
         return v

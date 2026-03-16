@@ -31,9 +31,7 @@ class TestWsThroughput:
             rate = len(data) / COLLECTION_SECONDS
             assert rate >= 1.0, f"Rate {rate:.1f}/s below 1.0/s ({len(data)} msgs)"
 
-    async def test_hello_latency_under_2s(
-        self, market_feed_route: MarketFeedRoute
-    ) -> None:
+    async def test_hello_latency_under_2s(self, market_feed_route: MarketFeedRoute) -> None:
         """Time from connect to hello message < 2000ms."""
         start = time.perf_counter()
         async with market_feed_route.client(timeout=10) as ws:

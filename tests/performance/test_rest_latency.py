@@ -75,9 +75,7 @@ class TestStatsLatency:
     @pytest.mark.finding
     async def test_p95(self, warmed_client: SMFSClient) -> None:
         t = await _measure(warmed_client, "/stats", SAMPLE_SIZE)
-        assert t.p95 < STATS_SLA["p95"], (
-            f"/stats p95={t.p95:.0f}ms (p50={t.p50:.0f}ms, bimodal)"
-        )
+        assert t.p95 < STATS_SLA["p95"], f"/stats p95={t.p95:.0f}ms (p50={t.p50:.0f}ms, bimodal)"
 
     @pytest.mark.xfail(
         reason="F-PERF-001: /stats p99 bimodal aggregation latency",
@@ -86,6 +84,4 @@ class TestStatsLatency:
     @pytest.mark.finding
     async def test_p99(self, warmed_client: SMFSClient) -> None:
         t = await _measure(warmed_client, "/stats", SAMPLE_SIZE)
-        assert t.p99 < STATS_SLA["p99"], (
-            f"/stats p99={t.p99:.0f}ms (p50={t.p50:.0f}ms, bimodal)"
-        )
+        assert t.p99 < STATS_SLA["p99"], f"/stats p99={t.p99:.0f}ms (p50={t.p50:.0f}ms, bimodal)"

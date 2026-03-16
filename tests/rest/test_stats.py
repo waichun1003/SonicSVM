@@ -79,9 +79,7 @@ class TestStats:
         """currentSeq is a positive integer on an active market."""
         data = await stats_route.get_stats()
         market = data.markets[MARKET_ID]
-        assert market.currentSeq > 0, (
-            f"Expected currentSeq > 0, got {market.currentSeq}"
-        )
+        assert market.currentSeq > 0, f"Expected currentSeq > 0, got {market.currentSeq}"
 
     async def test_stats_content_type_json(self, api_client) -> None:
         """Response Content-Type header is application/json."""

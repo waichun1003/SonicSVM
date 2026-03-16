@@ -82,25 +82,19 @@ class TestCorsHeaders:
         """OPTIONS response includes Access-Control-Allow-Methods header."""
         resp = await api_client.request("OPTIONS", "/health")
         allow = resp.headers.get("access-control-allow-methods", "")
-        assert "GET" in allow, (
-            f"Expected 'GET' in Access-Control-Allow-Methods, got: {allow!r}"
-        )
+        assert "GET" in allow, f"Expected 'GET' in Access-Control-Allow-Methods, got: {allow!r}"
 
     async def test_cors_allow_origin_on_success(self, api_client) -> None:
         """Successful responses include Access-Control-Allow-Origin header."""
         resp = await api_client.get("/health")
         origin = resp.headers.get("access-control-allow-origin", "")
-        assert origin == "*", (
-            f"Expected ACAO '*' on /health, got: {origin!r}"
-        )
+        assert origin == "*", f"Expected ACAO '*' on /health, got: {origin!r}"
 
     async def test_cors_allow_origin_on_error(self, api_client) -> None:
         """Error responses also include CORS headers."""
         resp = await api_client.get("/nonexistent")
         origin = resp.headers.get("access-control-allow-origin", "")
-        assert origin == "*", (
-            f"Expected ACAO '*' on 404, got: {origin!r}"
-        )
+        assert origin == "*", f"Expected ACAO '*' on 404, got: {origin!r}"
 
     async def test_options_markets_returns_204(self, api_client) -> None:
         """OPTIONS /markets returns 204."""

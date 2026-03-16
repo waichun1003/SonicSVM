@@ -19,13 +19,11 @@ from smfs_qa.solana import (
 pytestmark = [pytest.mark.solana]
 
 VALID_SIG_87 = (
-    "5VERv8NMhJZCpMBzYv8oXsK9VxFDJWtqWoG8cUmKcKJP"
-    "EqfvGnAkaQnRe3sz2TBPguC6rA6F3YAFn8TfXxd3rvg"
+    "5VERv8NMhJZCpMBzYv8oXsK9VxFDJWtqWoG8cUmKcKJPEqfvGnAkaQnRe3sz2TBPguC6rA6F3YAFn8TfXxd3rvg"
 )
 
 VALID_SIG_88 = (
-    "2297c4pup8s2D1n6pVFBWg3TMpmsDThCCGW17xZ1dSFA"
-    "7HZvqUGVRoLZNJMPUabmqCid9vwaHnfVCxCXyjxuzkgN"
+    "2297c4pup8s2D1n6pVFBWg3TMpmsDThCCGW17xZ1dSFA7HZvqUGVRoLZNJMPUabmqCid9vwaHnfVCxCXyjxuzkgN"
 )
 
 

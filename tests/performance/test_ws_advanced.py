@@ -60,9 +60,7 @@ class TestInterMessageLatency:
 class TestConnectionTime:
     """WebSocket connection establishment overhead."""
 
-    async def test_single_connection_under_2s(
-        self, market_feed_route: MarketFeedRoute
-    ) -> None:
+    async def test_single_connection_under_2s(self, market_feed_route: MarketFeedRoute) -> None:
         """TCP + TLS + WS upgrade + hello < 2s."""
         start = time.perf_counter()
         async with market_feed_route.client(timeout=10) as ws:
@@ -89,9 +87,7 @@ class TestConnectionTime:
 class TestThroughputByType:
     """Message rate breakdown by type."""
 
-    async def test_book_delta_rate_matches_stats(
-        self, market_feed_route: MarketFeedRoute
-    ) -> None:
+    async def test_book_delta_rate_matches_stats(self, market_feed_route: MarketFeedRoute) -> None:
         """/stats bookUpdatesPerSecond roughly matches observed WS rate."""
         async with SMFSClient("https://interviews-api.sonic.game") as client:
             stats = (await client.get("/stats")).json()
@@ -107,9 +103,7 @@ class TestThroughputByType:
             f"Observed {observed:.1f}/s < 50% of declared {declared}/s"
         )
 
-    async def test_trade_rate_positive(
-        self, market_feed_route: MarketFeedRoute
-    ) -> None:
+    async def test_trade_rate_positive(self, market_feed_route: MarketFeedRoute) -> None:
         """At least 1 trade in 10s window."""
         async with market_feed_route.client(timeout=20) as ws:
             await ws.recv_json(timeout=10)

@@ -40,9 +40,7 @@ class SMFSClient:
     @property
     def client(self) -> httpx.AsyncClient:
         if self._client is None:
-            raise RuntimeError(
-                "Client not initialized. Use 'async with SMFSClient(...)' context."
-            )
+            raise RuntimeError("Client not initialized. Use 'async with SMFSClient(...)' context.")
         return self._client
 
     @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=0.5, max=5))

@@ -52,9 +52,7 @@ class TestSubscribeFilters:
             await ws.send_json(SolanaStreamRoute.build_subscribe_all())
             messages = await ws.collect_messages(duration=60, timeout=65)
             non_hello = [m for m in messages if m.get("type") != "stream_hello"]
-            assert len(non_hello) > 0, (
-                f"Zero non-hello messages in 60s. Got {len(messages)} total."
-            )
+            assert len(non_hello) > 0, f"Zero non-hello messages in 60s. Got {len(messages)} total."
 
     async def test_subscribe_empty_programs_array(
         self, solana_stream_route: SolanaStreamRoute

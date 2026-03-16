@@ -141,9 +141,7 @@ class TestServerBehavior:
 
             try:
                 msg = await ws.recv_json(timeout=5)
-                assert "type" in msg, (
-                    f"Expected typed message after binary frame, got: {msg}"
-                )
+                assert "type" in msg, f"Expected typed message after binary frame, got: {msg}"
             except (TimeoutError, websockets.exceptions.ConnectionClosed):
                 pass
 
@@ -183,15 +181,10 @@ class TestServerBehavior:
             try:
                 await ws.send_json({"type": "ping"})
                 pong = await ws.drain_until("pong", timeout=5)
-                assert pong["type"] == "pong", (
-                    "Connection should survive oversized message"
-                )
+                assert pong["type"] == "pong", "Connection should survive oversized message"
             except (
                 TimeoutError,
                 websockets.exceptions.ConnectionClosed,
                 RuntimeError,
             ):
-                pytest.skip(
-                    "Server closed after oversized message -- "
-                    "acceptable behavior"
-                )
+                pytest.skip("Server closed after oversized message -- acceptable behavior")

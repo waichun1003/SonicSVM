@@ -1,0 +1,591 @@
+{
+    "openapi": "3.1.0",
+    "info": {
+        "title": "Sonic Market Feed Service",
+        "version": "1.0.0",
+        "description": "Deterministic simulated trading feed backend for the Sonic SVM Frontend, Backend & Testing Engineering Technical Exercise. Provides REST snapshots and WebSocket streaming of order book deltas and trades for BTC-PERP."
+    },
+    "servers": [
+        {
+            "url": "https://interviews-api.sonic.game",
+            "description": "Production"
+        },
+        {
+            "url": "http://localhost:3000",
+            "description": "Local development"
+        }
+    ],
+    "paths": {
+        "/health": {
+            "get": {
+                "tags": [
+                    "Health"
+                ],
+                "summary": "Health check",
+                "description": "Returns service health status, available markets, and WebSocket URL.",
+                "responses": {
+                    "200": {
+                        "description": "Service is healthy",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "ok": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "serverTime": {
+                                            "type": "number",
+                                            "description": "Unix timestamp in milliseconds",
+                                            "example": 1710000000000
+                                        },
+                                        "markets": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "string"
+                                            },
+                                            "example": [
+                                                "BTC-PERP"
+                                            ]
+                                        },
+                                        "wsUrl": {
+                                            "type": "string",
+                                            "description": "WebSocket endpoint URL",
+                                            "example": "wss://interviews-api.sonic.game/ws"
+                                        }
+                                    },
+                                    "required": [
+                                        "ok",
+                                        "serverTime",
+                                        "markets",
+                                        "wsUrl"
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/markets": {
+            "get": {
+                "tags": [
+                    "Markets"
+                ],
+                "summary": "List markets",
+                "description": "Returns all available markets. Currently only BTC-PERP.",
+                "responses": {
+                    "200": {
+                        "description": "List of markets",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "markets": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object",
+                                                "properties": {
+                                                    "marketId": {
+                                                        "type": "string",
+                                                        "example": "BTC-PERP"
+                                                    },
+                                                    "base": {
+                                                        "type": "string",
+                                                        "example": "BTC"
+                                                    },
+                                                    "quote": {
+                                                        "type": "string",
+                                                        "example": "USDT"
+                                                    }
+                                                },
+                                                "required": [
+                                                    "marketId",
+                                                    "base",
+                                                    "quote"
+                                                ]
+                                            }
+                                        }
+                                    },
+                                    "required": [
+                                        "markets"
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/markets/{marketId}/snapshot": {
+            "get": {
+                "tags": [
+                    "Markets"
+                ],
+                "summary": "Get order book snapshot",
+                "description": "Returns the current order book snapshot including bids, asks, mid-price, and recent trades for a given market.",
+                "parameters": [
+                    {
+                        "name": "marketId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "example": "BTC-PERP"
+                        },
+                        "description": "Market identifier"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Order book snapshot",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "marketId": {
+                                            "type": "string",
+                                            "example": "BTC-PERP"
+                                        },
+                                        "ts": {
+                                            "type": "number",
+                                            "description": "Unix timestamp in milliseconds"
+                                        },
+                                        "midPrice": {
+                                            "type": "number",
+                                            "example": 65000.5
+                                        },
+                                        "bids": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/OrderBookLevel"
+                                            }
+                                        },
+                                        "asks": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/OrderBookLevel"
+                                            }
+                                        },
+                                        "recentTrades": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/Trade"
+                                            }
+                                        }
+                                    },
+                                    "required": [
+                                        "marketId",
+                                        "ts",
+                                        "midPrice",
+                                        "bids",
+                                        "asks",
+                                        "recentTrades"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Unknown market",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/orders": {
+            "post": {
+                "tags": [
+                    "Orders"
+                ],
+                "summary": "Submit an order",
+                "description": "Submits a simulated order. Orders are acknowledged but not executed against the book (the book is driven by the simulator).",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/OrderRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Order accepted",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "accepted": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "orderId": {
+                                            "type": "string",
+                                            "example": "ord_1"
+                                        },
+                                        "ts": {
+                                            "type": "number"
+                                        }
+                                    },
+                                    "required": [
+                                        "accepted",
+                                        "orderId",
+                                        "ts"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Validation error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Unknown market",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/stats": {
+            "get": {
+                "tags": [
+                    "Stats"
+                ],
+                "summary": "Get simulator stats",
+                "description": "Returns real-time simulator statistics including update rates, connected client count, and current sequence number.",
+                "responses": {
+                    "200": {
+                        "description": "Simulator statistics",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "bookUpdatesPerSecond": {
+                                            "type": "number",
+                                            "example": 10
+                                        },
+                                        "tradesPerSecond": {
+                                            "type": "number",
+                                            "example": 2
+                                        },
+                                        "connectedClients": {
+                                            "type": "number",
+                                            "example": 5
+                                        },
+                                        "currentSeq": {
+                                            "type": "number",
+                                            "example": 42
+                                        }
+                                    },
+                                    "required": [
+                                        "bookUpdatesPerSecond",
+                                        "tradesPerSecond",
+                                        "connectedClients",
+                                        "currentSeq"
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "components": {
+        "schemas": {
+            "OrderBookLevel": {
+                "type": "object",
+                "properties": {
+                    "price": {
+                        "type": "number",
+                        "example": 65000.5
+                    },
+                    "size": {
+                        "type": "number",
+                        "description": "Size at this price level. 0 means the level should be removed.",
+                        "example": 1.25
+                    }
+                },
+                "required": [
+                    "price",
+                    "size"
+                ]
+            },
+            "Trade": {
+                "type": "object",
+                "properties": {
+                    "tradeId": {
+                        "type": "string",
+                        "example": "t_1"
+                    },
+                    "ts": {
+                        "type": "number",
+                        "description": "Unix timestamp in milliseconds"
+                    },
+                    "price": {
+                        "type": "number",
+                        "example": 65000.5
+                    },
+                    "size": {
+                        "type": "number",
+                        "example": 0.1
+                    },
+                    "side": {
+                        "type": "string",
+                        "enum": [
+                            "buy",
+                            "sell"
+                        ]
+                    }
+                },
+                "required": [
+                    "tradeId",
+                    "ts",
+                    "price",
+                    "size",
+                    "side"
+                ]
+            },
+            "OrderRequest": {
+                "type": "object",
+                "properties": {
+                    "marketId": {
+                        "type": "string",
+                        "example": "BTC-PERP"
+                    },
+                    "side": {
+                        "type": "string",
+                        "enum": [
+                            "buy",
+                            "sell"
+                        ]
+                    },
+                    "type": {
+                        "type": "string",
+                        "enum": [
+                            "limit",
+                            "market"
+                        ]
+                    },
+                    "price": {
+                        "type": "number",
+                        "description": "Required for limit orders. Must be positive.",
+                        "example": 65000
+                    },
+                    "size": {
+                        "type": "number",
+                        "description": "Must be positive.",
+                        "example": 0.5
+                    }
+                },
+                "required": [
+                    "marketId",
+                    "side",
+                    "type",
+                    "size"
+                ]
+            },
+            "Error": {
+                "type": "object",
+                "properties": {
+                    "error": {
+                        "type": "string",
+                        "example": "Unknown market: FOO"
+                    }
+                },
+                "required": [
+                    "error"
+                ]
+            },
+            "WsHelloMessage": {
+                "type": "object",
+                "description": "Sent to the client immediately after WebSocket connection.",
+                "properties": {
+                    "type": {
+                        "type": "string",
+                        "enum": [
+                            "hello"
+                        ]
+                    },
+                    "serverTime": {
+                        "type": "number"
+                    },
+                    "marketId": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "type",
+                    "serverTime",
+                    "marketId"
+                ]
+            },
+            "WsBookDeltaMessage": {
+                "type": "object",
+                "description": "Order book delta update. seq is strictly incrementing. size: 0 means remove that price level.",
+                "properties": {
+                    "type": {
+                        "type": "string",
+                        "enum": [
+                            "book_delta"
+                        ]
+                    },
+                    "ts": {
+                        "type": "number"
+                    },
+                    "seq": {
+                        "type": "number"
+                    },
+                    "bids": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/OrderBookLevel"
+                        }
+                    },
+                    "asks": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/OrderBookLevel"
+                        }
+                    }
+                },
+                "required": [
+                    "type",
+                    "ts",
+                    "seq",
+                    "bids",
+                    "asks"
+                ]
+            },
+            "WsTradeMessage": {
+                "type": "object",
+                "description": "A trade that occurred in the simulated market.",
+                "properties": {
+                    "type": {
+                        "type": "string",
+                        "enum": [
+                            "trade"
+                        ]
+                    },
+                    "ts": {
+                        "type": "number"
+                    },
+                    "tradeId": {
+                        "type": "string"
+                    },
+                    "price": {
+                        "type": "number"
+                    },
+                    "size": {
+                        "type": "number"
+                    },
+                    "side": {
+                        "type": "string",
+                        "enum": [
+                            "buy",
+                            "sell"
+                        ]
+                    }
+                },
+                "required": [
+                    "type",
+                    "ts",
+                    "tradeId",
+                    "price",
+                    "size",
+                    "side"
+                ]
+            },
+            "WsPongMessage": {
+                "type": "object",
+                "description": "Response to a client-sent {\"type\":\"ping\"} message.",
+                "properties": {
+                    "type": {
+                        "type": "string",
+                        "enum": [
+                            "pong"
+                        ]
+                    },
+                    "ts": {
+                        "type": "number"
+                    }
+                },
+                "required": [
+                    "type",
+                    "ts"
+                ]
+            },
+            "WsResetMessage": {
+                "type": "object",
+                "description": "Indicates the client should discard local book state and re-fetch /snapshot.",
+                "properties": {
+                    "type": {
+                        "type": "string",
+                        "enum": [
+                            "reset"
+                        ]
+                    },
+                    "reason": {
+                        "type": "string"
+                    },
+                    "ts": {
+                        "type": "number"
+                    }
+                },
+                "required": [
+                    "type",
+                    "reason",
+                    "ts"
+                ]
+            }
+        }
+    },
+    "tags": [
+        {
+            "name": "Health",
+            "description": "Service health and discovery"
+        },
+        {
+            "name": "Markets",
+            "description": "Market data and order book snapshots"
+        },
+        {
+            "name": "Orders",
+            "description": "Simulated order submission"
+        },
+        {
+            "name": "Stats",
+            "description": "Real-time simulator statistics"
+        },
+        {
+            "name": "WebSocket",
+            "description": "Connect via ws(s)://host/ws?marketId=BTC-PERP. Messages: hello, book_delta, trade, reset, pong."
+        }
+    ]
+}

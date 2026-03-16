@@ -55,8 +55,7 @@ class TestSlotMonotonicOrdering:
 
             for idx in result["rollbacks"]:
                 QALogger.warn(
-                    f"  Non-monotonic at index {idx}: "
-                    f"slot {slots[idx - 1]} -> {slots[idx]}"
+                    f"  Non-monotonic at index {idx}: slot {slots[idx - 1]} -> {slots[idx]}"
                 )
 
             non_monotonic = len(result["rollbacks"])
@@ -64,13 +63,10 @@ class TestSlotMonotonicOrdering:
             QALogger.assert_true(
                 rate < 0.02,
                 f"Slot ordering is {100 - rate * 100:.1f}% monotonic ({non_monotonic} violations)",
-                f"{non_monotonic} ordering violations in "
-                f"{len(slots)} transitions ({rate:.1%})",
+                f"{non_monotonic} ordering violations in {len(slots)} transitions ({rate:.1%})",
             )
 
-    async def test_slot_values_are_plausible(
-        self, solana_stream_route: SolanaStreamRoute
-    ) -> None:
+    async def test_slot_values_are_plausible(self, solana_stream_route: SolanaStreamRoute) -> None:
         """Slot numbers should be in a plausible range for the current Solana epoch.
 
         As of early 2026, Solana mainnet slots are in the 300M+ range.
@@ -135,9 +131,7 @@ class TestSlotMonotonicOrdering:
 class TestSlotGapDistribution:
     """Measure and validate the distribution of slot gaps."""
 
-    async def test_gap_distribution(
-        self, solana_stream_route: SolanaStreamRoute
-    ) -> None:
+    async def test_gap_distribution(self, solana_stream_route: SolanaStreamRoute) -> None:
         """Measure the distribution of slot gaps between consecutive transactions.
 
         Expected:
@@ -173,9 +167,7 @@ class TestSlotGapDistribution:
             QALogger.info(f"Small gaps (1-10): {small_gaps}")
             QALogger.info(f"Large gaps (>100): {large_gaps}")
             if positive_gaps:
-                QALogger.info(
-                    f"Positive gap range: {min(positive_gaps)} - {max(positive_gaps)}"
-                )
+                QALogger.info(f"Positive gap range: {min(positive_gaps)} - {max(positive_gaps)}")
 
             large_gap_rate = large_gaps / len(gaps) if gaps else 0
             QALogger.assert_true(

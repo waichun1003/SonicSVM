@@ -105,8 +105,7 @@ class TestOrderRateLimiting:
                 await asyncio.sleep(1.0)
 
             assert successes >= 3, (
-                f"Only {successes}/5 sequential orders succeeded "
-                f"({rate_limited} rate-limited)"
+                f"Only {successes}/5 sequential orders succeeded ({rate_limited} rate-limited)"
             )
 
     async def test_burst_orders_rate_limit_detected(self) -> None:
@@ -116,10 +115,7 @@ class TestOrderRateLimiting:
         This test documents the rate limit threshold.
         """
         async with SMFSClient(BASE_URL, timeout=10) as client:
-            tasks = [
-                client.post("/orders", json=VALID_LIMIT_ORDER)
-                for _ in range(10)
-            ]
+            tasks = [client.post("/orders", json=VALID_LIMIT_ORDER) for _ in range(10)]
             responses = await asyncio.gather(*tasks, return_exceptions=True)
 
             statuses = {}
@@ -141,10 +137,7 @@ class TestOrderRateLimiting:
     async def test_concurrent_orders_unique_ids(self) -> None:
         """Concurrent orders that succeed should have unique orderIds."""
         async with SMFSClient(BASE_URL, timeout=10) as client:
-            tasks = [
-                client.post("/orders", json=VALID_LIMIT_ORDER)
-                for _ in range(5)
-            ]
+            tasks = [client.post("/orders", json=VALID_LIMIT_ORDER) for _ in range(5)]
             responses = await asyncio.gather(*tasks, return_exceptions=True)
 
             order_ids = []
@@ -155,6 +148,4 @@ class TestOrderRateLimiting:
                         order_ids.append(data["orderId"])
 
             if len(order_ids) >= 2:
-                assert len(set(order_ids)) == len(order_ids), (
-                    f"Duplicate orderIds: {order_ids}"
-                )
+                assert len(set(order_ids)) == len(order_ids), f"Duplicate orderIds: {order_ids}"

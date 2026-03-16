@@ -65,9 +65,7 @@ class TestLatencyUnderLoad:
 
         F-PERF-003: Locust found ~10% HTTP 500 on /snapshot under load.
         """
-        t, errs = await _concurrent_latency(
-            BASE_URL, "/markets/BTC-PERP/snapshot", 10, 5
-        )
+        t, errs = await _concurrent_latency(BASE_URL, "/markets/BTC-PERP/snapshot", 10, 5)
         total = t.count + errs
         rate = errs / total if total > 0 else 0
         assert rate < 0.20, f"Error rate {rate:.0%} ({errs}/{total}) > 20%"

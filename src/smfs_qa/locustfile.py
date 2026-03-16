@@ -39,9 +39,7 @@ class SMFSReadUser(HttpUser):
     host = "https://interviews-api.sonic.game"
 
     def on_start(self) -> None:
-        self.client.headers.update(
-            {"User-Agent": "smfs-qa/1.0 (locust; load-test)"}
-        )
+        self.client.headers.update({"User-Agent": "smfs-qa/1.0 (locust; load-test)"})
 
     @tag("rest", "health")
     @task(3)
@@ -68,9 +66,7 @@ class SMFSReadUser(HttpUser):
     @tag("rest", "snapshot")
     @task(2)
     def get_snapshot(self) -> None:
-        with self.client.get(
-            "/markets/BTC-PERP/snapshot", catch_response=True
-        ) as resp:
+        with self.client.get("/markets/BTC-PERP/snapshot", catch_response=True) as resp:
             if resp.status_code == 200:
                 data = resp.json()
                 if not data.get("bids") and not data.get("asks"):
@@ -105,10 +101,12 @@ class SMFSOrderUser(HttpUser):
     weight = 1
 
     def on_start(self) -> None:
-        self.client.headers.update({
-            "User-Agent": "smfs-qa/1.0 (locust; order-test)",
-            "Content-Type": "application/json",
-        })
+        self.client.headers.update(
+            {
+                "User-Agent": "smfs-qa/1.0 (locust; order-test)",
+                "Content-Type": "application/json",
+            }
+        )
 
     @tag("rest", "orders")
     @task(3)
@@ -120,9 +118,7 @@ class SMFSOrderUser(HttpUser):
             "size": 0.01,
             "price": 50000.0,
         }
-        with self.client.post(
-            "/orders", json=payload, catch_response=True
-        ) as resp:
+        with self.client.post("/orders", json=payload, catch_response=True) as resp:
             if resp.status_code == 200:
                 data = resp.json()
                 if not data.get("accepted"):
@@ -141,9 +137,7 @@ class SMFSOrderUser(HttpUser):
             "type": "market",
             "size": 0.01,
         }
-        with self.client.post(
-            "/orders", json=payload, catch_response=True
-        ) as resp:
+        with self.client.post("/orders", json=payload, catch_response=True) as resp:
             if resp.status_code == 200:
                 data = resp.json()
                 if not data.get("accepted"):
@@ -318,9 +312,7 @@ def check_sla(environment, **kwargs) -> None:
     for entry in stats.entries.values():
         if entry.name == "/markets/BTC-PERP/snapshot":
             if entry.num_requests > 0 and entry.fail_ratio > 0.15:
-                sla_failures.append(
-                    f"/snapshot error rate {entry.fail_ratio:.1%} > 15%"
-                )
+                sla_failures.append(f"/snapshot error rate {entry.fail_ratio:.1%} > 15%")
 
     if sla_failures:
         for msg in sla_failures:

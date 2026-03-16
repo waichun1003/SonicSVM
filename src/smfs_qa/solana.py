@@ -9,9 +9,7 @@ from __future__ import annotations
 from solders.pubkey import Pubkey
 from solders.signature import Signature
 
-BASE58_ALPHABET = set(
-    "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"
-)
+BASE58_ALPHABET = set("123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz")
 
 
 def is_valid_base58(value: str) -> bool:

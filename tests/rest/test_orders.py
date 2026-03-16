@@ -177,9 +177,7 @@ class TestOrderIdempotency:
         data1 = OrderResponse.model_validate(resp1.json())
         data2 = OrderResponse.model_validate(resp2.json())
 
-        assert data1.orderId != data2.orderId, (
-            f"Duplicate orders got same orderId: {data1.orderId}"
-        )
+        assert data1.orderId != data2.orderId, f"Duplicate orders got same orderId: {data1.orderId}"
 
     async def test_concurrent_orders_all_accepted(self, api_client) -> None:
         """Multiple concurrent orders should all be processed without 5xx."""
@@ -197,9 +195,7 @@ class TestOrderIdempotency:
         responses = await asyncio.gather(*tasks)
 
         for i, resp in enumerate(responses):
-            assert resp.status_code < 500, (
-                f"Concurrent order {i} returned {resp.status_code}"
-            )
+            assert resp.status_code < 500, f"Concurrent order {i} returned {resp.status_code}"
 
         success_count = sum(1 for r in responses if r.status_code == 200)
         assert success_count >= 1, "At least one concurrent order should succeed"

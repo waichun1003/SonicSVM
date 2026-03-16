@@ -55,7 +55,7 @@ class WSTestClient:
     async def recv_json(self, timeout: float | None = None) -> dict[str, Any]:
         t = timeout or self.timeout
         raw = await asyncio.wait_for(self.ws.recv(), timeout=t)
-        data = json.loads(raw)
+        data: dict[str, Any] = json.loads(raw)
         QALogger.log_ws_recv(data)
         return data
 
@@ -90,8 +90,7 @@ class WSTestClient:
                 break
 
         QALogger.info(
-            f"Collected {len(messages)} messages "
-            f"(requested: count={count}, duration={duration}s)"
+            f"Collected {len(messages)} messages (requested: count={count}, duration={duration}s)"
         )
         return messages
 
