@@ -1,16 +1,22 @@
 name: Full Regression
 
 on:
-  push:
-    branches: [main]
+  workflow_run:
+    workflows: ["Smoke Test"]
+    types: [completed]
   schedule:
-    - cron: "0 6 * * *"  # Daily at 6am UTC
+    - cron: "10 6 * * *"   # Daily 6:10am UTC (after morning smoke)
+    - cron: "10 18 * * *"  # Daily 6:10pm UTC (after night smoke)
   workflow_dispatch:
 
 jobs:
   regression:
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    if: >
+      github.event_name == 'workflow_dispatch' ||
+      github.event_name == 'schedule' ||
+      (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success')
     steps:
       - uses: actions/checkout@v4
 

@@ -5,7 +5,7 @@ on:
     workflows: ["Full Regression"]
     types: [completed]
   schedule:
-    - cron: "0 6 * * 1"  # Weekly Monday 6am UTC
+    - cron: "0 3 * * *"  # Daily at 3am UTC
   workflow_dispatch:
 
 jobs:

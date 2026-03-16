@@ -104,16 +104,16 @@ Full details in [FINDINGS.md](FINDINGS.md).
 
 ## CI/CD Pipeline
 
-Four-phase pipeline with escalating scope and automated failure analysis:
+Four-phase cascading pipeline with automated failure analysis:
 
-| Phase | Workflow | Trigger | Scope | Timeout |
-|-------|----------|---------|-------|---------|
-| Smoke | `smoke.yml` | Every push/PR | Lint, mypy, ~50 core tests | 5 min |
-| Regression | `regression.yml` | Push to main, daily 6am UTC | Full functional suite | 20 min |
-| Performance | `performance.yml` | After regression, weekly Monday | 38 benchmarks + Locust load | 30 min |
-| QA Analysis | `qa-analyze.yml` | When smoke or regression fails | Failure classification + PR comment | 5 min |
+| Phase | Workflow | Trigger | Schedule | Timeout |
+|-------|----------|---------|----------|---------|
+| Smoke | `smoke.yml` | Every push/PR | Twice daily (6am + 6pm UTC) | 5 min |
+| Regression | `regression.yml` | After smoke passes | Twice daily (6:10am + 6:10pm UTC) | 20 min |
+| Performance | `performance.yml` | After regression passes | Daily (3am UTC) | 30 min |
+| QA Analysis | `qa-analyze.yml` | When smoke or regression fails | -- | 5 min |
 
-The QA Analysis workflow automatically classifies failures as transient, rate-limited, known findings, or new bugs and posts a summary on the PR.
+The pipeline cascades: **push -> smoke -> regression (if smoke passes) -> performance (if regression passes)**. If any phase fails, the QA Analysis workflow automatically classifies failures and posts a summary on the PR.
 
 ## Agent Skills
 
