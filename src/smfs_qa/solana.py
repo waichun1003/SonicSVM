@@ -24,8 +24,8 @@ def is_valid_solana_signature(sig: str) -> bool:
 
     Performs cryptographic validation: the string must be valid Base58
     that decodes to exactly 64 bytes (Ed25519 signature size).
-    Falls back to charset + length check if solders parsing fails
-    for non-structural reasons.
+    Returns False immediately if Base58 charset, length, or solders
+    parsing fails -- there is no fallback.
     """
     if not is_valid_base58(sig):
         return False

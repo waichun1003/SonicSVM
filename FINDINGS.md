@@ -495,11 +495,11 @@ All three share a single root cause: prices are handled as IEEE 754 double-preci
 
 **Unified Fix:** A single change at the data source layer -- applying `round(price, N)` where `N` matches the instrument's tick size precision -- would resolve all three findings simultaneously. This should be implemented before individual serialization fixes.
 
-### Theme 2: Solana Stream Data Delivery Failure (F-SOL-001, F-SOL-002)
+### Theme 2: Solana Stream Data Delivery Intermittent (F-SOL-001, F-SOL-002)
 
-Both Solana findings describe the same fundamental problem: the transaction stream's subscribe/publish pipeline is non-functional. F-SOL-001 establishes the baseline (no data with any subscribe variant), and F-SOL-002 extends the investigation to confirm filters are not the issue. Together they represent a complete failure of the Solana streaming feature.
+Both Solana findings describe unreliable transaction stream behavior. F-SOL-001 establishes that subscribe data delivery is intermittent (~60% success) with no acknowledgment. F-SOL-002 extends the investigation to confirm that filter variants have similar intermittent delivery. While the stream does deliver data in many cases, it lacks reliability guarantees and does not acknowledge subscriptions.
 
-**Impact:** The Solana transaction stream is a differentiating feature of the platform. Its complete non-functionality in the test environment represents either a deployment issue or a feature that is not yet production-ready.
+**Impact:** The Solana transaction stream is a differentiating feature of the platform. Its intermittent behavior and lack of acknowledgment make it difficult for clients to distinguish "subscribed and waiting" from "subscription ignored."
 
 ### Theme 3: Inconsistent Error Handling (F-REST-004)
 
@@ -515,7 +515,7 @@ This inconsistency complicates error handling for API consumers who must handle 
 
 ### Priority 1 (High -- Immediate Action)
 
-1. **Fix GET /snapshot 500 errors under load (F-PERF-003):** The snapshot endpoint returns HTTP 500 at ~14% under concurrent access. This is a production reliability issue. Investigate the race condition in the order book assembly and implement error handling (cached fallback or copy-on-write data structure).
+1. **Fix GET /snapshot 500 errors under load (F-PERF-003):** The snapshot endpoint returns HTTP 500 at ~6-15% under concurrent access. This is a production reliability issue. Investigate the race condition in the order book assembly and implement error handling (cached fallback or copy-on-write data structure).
 
 2. **Complete Solana Stream Pipeline (F-SOL-001, F-SOL-002):** Data delivery has been partially restored, but acknowledgments and sustained delivery remain broken. Document the subscribe protocol, implement a subscribe acknowledgment, and ensure reliable transaction streaming.
 
@@ -585,17 +585,17 @@ This inconsistency complicates error handling for API consumers who must handle 
 
 | Metric | Value |
 |--------|-------|
-| Total requests | 238 |
-| HTTP 429 responses | 158 (66.4%) |
-| Success rate | 33.6% |
-| p50 | 540ms |
-| p95 | 2100ms |
+| Total requests | 300 |
+| HTTP 429 responses | 223 (74.3%) |
+| Success rate | 25.7% |
+| p50 | 190ms |
+| p95 | 300ms |
 
-**Root cause hypothesis:** The server enforces rate limiting on the `/orders` endpoint to prevent order spam. The rate limit threshold appears to be approximately 1-2 orders per second per client. Under 50 concurrent users, 66% of requests exceed this limit.
+**Root cause hypothesis:** The server enforces rate limiting on the `/orders` endpoint to prevent order spam. The rate limit threshold appears to be approximately 1-2 orders per second per client. Under 50 concurrent users, ~74% of requests exceed this limit.
 
 **Suggested fix:** Document the rate limit in the API reference (requests per second, per client/IP, burst allowance). Return a `Retry-After` header in 429 responses to help clients implement backoff.
 
-### F-PERF-003: GET /snapshot HTTP 500 Under Load (14.1%)
+### F-PERF-003: GET /snapshot HTTP 500 Under Load (~6.6%)
 
 - **Severity:** High
 - **Component:** REST API — GET /markets/BTC-PERP/snapshot
@@ -605,12 +605,12 @@ This inconsistency complicates error handling for API consumers who must handle 
 
 | Metric | Value |
 |--------|-------|
-| Total requests | 121 |
-| HTTP 500 responses | 17 (14.1%) |
-| p50 | 540ms |
-| p95 | 2900ms |
+| Total requests | 152 |
+| HTTP 500 responses | 10 (6.6%) |
+| p50 | 190ms |
+| p95 | 270ms |
 
-**Root cause hypothesis:** The snapshot endpoint assembles the order book from a shared data structure. Under concurrent access, a race condition or lock contention causes the assembly to fail, returning HTTP 500 instead of a partial or cached result. The error rate correlates with concurrency level (~10% at 50 users, ~9% at 100 users from stress test).
+**Root cause hypothesis:** The snapshot endpoint assembles the order book from a shared data structure. Under concurrent access, a race condition or lock contention causes the assembly to fail, returning HTTP 500 instead of a partial or cached result. The error rate varies between ~6-15% depending on concurrency level and server load.
 
 **Suggested fix:** Add error handling around the snapshot assembly: return a cached last-known-good snapshot on failure, or use a copy-on-write data structure that eliminates concurrent access errors. At minimum, return a structured error response instead of raw 500.
 
@@ -627,4 +627,4 @@ This inconsistency complicates error handling for API consumers who must handle 
 
 ---
 
-*All findings are verified through automated pytest tests with xfail markers. Deterministic findings (100% reproduction rate) use `strict=True` -- fixing them will cause an XPASS failure, signaling the finding is resolved. Intermittent findings use `strict=False` to avoid false CI failures on runs where the bug does not manifest.*
+*Most findings are verified through automated pytest tests. Deterministic findings (F-REST-004, F-WS-001, F-PERF-001) use `xfail(strict=True)` -- fixing them will cause an XPASS failure, signaling the finding is resolved. Intermittent findings (F-REST-001, F-REST-002, F-WS-002, F-WS-003, F-SOL-001, F-SOL-002) use `xfail(strict=False)` to avoid false CI failures. F-INFRA-001 is mitigated directly in the client code (no xfail needed). F-PERF-002 and F-PERF-003 are verified through tolerance assertions rather than xfail markers.*

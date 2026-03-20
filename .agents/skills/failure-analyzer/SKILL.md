@@ -28,21 +28,14 @@ with known findings or draft new finding entries.
 
 ### Step 1: Parse Test Results
 
-Read JUnit XML files from `results/`:
+Use the automated analysis script for initial classification:
 ```bash
-# List available result files
-ls results/*.xml
+python scripts/analyze_results.py results/*.xml --findings FINDINGS.md
+```
 
-# For each file, extract failures
-python3 -c "
-import xml.etree.ElementTree as ET
-tree = ET.parse('results/live.xml')
-for tc in tree.getroot().iter('testcase'):
-    f = tc.find('failure')
-    if f is not None:
-        print(f'{tc.get(\"classname\")}.{tc.get(\"name\")}')
-        print(f'  {f.get(\"message\", \"\")[:200]}')
-"
+For deeper manual inspection, read JUnit XML files from `results/`:
+```bash
+ls results/*.xml
 ```
 
 ### Step 2: Classify Each Failure

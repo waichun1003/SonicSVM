@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
+import logging
 import time
 from typing import Any
 
 import numpy as np
+
+logger = logging.getLogger(__name__)
 
 
 class LatencyTracker:
@@ -20,6 +23,14 @@ class LatencyTracker:
     @property
     def count(self) -> int:
         return len(self._samples)
+
+    @property
+    def samples(self) -> list[float]:
+        return list(self._samples)
+
+    @property
+    def max(self) -> float:
+        return float(max(self._samples)) if self._samples else 0.0
 
     def percentile(self, n: float) -> float:
         """Compute the nth percentile of recorded latencies."""
@@ -70,8 +81,8 @@ class Timer:
 
 async def warm_up(coro_factory: Any, count: int = 3) -> None:
     """Run a coroutine factory several times to warm up connections."""
-    for _ in range(count):
+    for i in range(count):
         try:
             await coro_factory()
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.warning("Warm-up request %d/%d failed: %s", i + 1, count, exc)

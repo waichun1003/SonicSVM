@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import os
 import shutil
 from pathlib import Path
 
@@ -46,8 +47,9 @@ def _preserve_allure_history():
         shutil.copytree(history_src, history_dst)
 
 
-BASE_URL = "https://interviews-api.sonic.game"
-WS_BASE_URL = "wss://interviews-api.sonic.game"
+_DEFAULT_HOST = "interviews-api.sonic.game"
+BASE_URL = os.environ.get("SMFS_BASE_URL", f"https://{_DEFAULT_HOST}")
+WS_BASE_URL = os.environ.get("SMFS_WS_URL", f"wss://{_DEFAULT_HOST}")
 
 
 # --- QA Logger auto-attach per test ---

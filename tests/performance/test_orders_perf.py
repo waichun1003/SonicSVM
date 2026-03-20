@@ -20,8 +20,6 @@ from smfs_qa.perf import LatencyTracker
 
 pytestmark = [pytest.mark.perf]
 
-BASE_URL = "https://interviews-api.sonic.game"
-
 VALID_LIMIT_ORDER = {
     "marketId": "BTC-PERP",
     "side": "buy",
@@ -43,10 +41,10 @@ VALID_MARKET_ORDER = {
 class TestOrderLatency:
     """POST /orders response time benchmarks."""
 
-    async def test_single_order_latency_under_2s(self) -> None:
+    async def test_single_order_latency_under_2s(self, base_url: str) -> None:
         """Single POST /orders completes within 2 seconds."""
         await asyncio.sleep(2)
-        async with SMFSClient(BASE_URL, timeout=10) as client:
+        async with SMFSClient(base_url, timeout=10) as client:
             start = time.perf_counter()
             resp = await client.post("/orders", json=VALID_LIMIT_ORDER)
             elapsed = (time.perf_counter() - start) * 1000
@@ -55,10 +53,10 @@ class TestOrderLatency:
             assert resp.status_code == 200, f"Order failed: {resp.status_code}"
             assert elapsed < 2000, f"Order latency {elapsed:.0f}ms > 2s"
 
-    async def test_order_latency_p95_under_1s(self) -> None:
+    async def test_order_latency_p95_under_1s(self, base_url: str) -> None:
         """p95 order latency under 1000ms across 20 sequential orders."""
         tracker = LatencyTracker()
-        async with SMFSClient(BASE_URL, timeout=10) as client:
+        async with SMFSClient(base_url, timeout=10) as client:
             for _ in range(20):
                 start = time.perf_counter()
                 resp = await client.post("/orders", json=VALID_LIMIT_ORDER)
@@ -74,10 +72,10 @@ class TestOrderLatency:
             f"(p50={tracker.p50:.0f}ms, mean={tracker.mean:.0f}ms)"
         )
 
-    async def test_market_order_latency(self) -> None:
+    async def test_market_order_latency(self, base_url: str) -> None:
         """Market order latency comparable to limit order."""
         tracker = LatencyTracker()
-        async with SMFSClient(BASE_URL, timeout=10) as client:
+        async with SMFSClient(base_url, timeout=10) as client:
             for _ in range(10):
                 start = time.perf_counter()
                 resp = await client.post("/orders", json=VALID_MARKET_ORDER)
@@ -96,10 +94,10 @@ class TestOrderLatency:
 class TestOrderRateLimiting:
     """POST /orders rate limiting behavior (F-PERF-002)."""
 
-    async def test_sequential_orders_no_rate_limit(self) -> None:
+    async def test_sequential_orders_no_rate_limit(self, base_url: str) -> None:
         """Sequential orders with 2s delay should not be rate-limited."""
         await asyncio.sleep(3)
-        async with SMFSClient(BASE_URL, timeout=10) as client:
+        async with SMFSClient(base_url, timeout=10) as client:
             successes = 0
             rate_limited = 0
             for _ in range(5):
@@ -114,13 +112,13 @@ class TestOrderRateLimiting:
                 f"Only {successes}/5 sequential orders succeeded ({rate_limited} rate-limited)"
             )
 
-    async def test_burst_orders_rate_limit_detected(self) -> None:
+    async def test_burst_orders_rate_limit_detected(self, base_url: str) -> None:
         """Rapid burst of 10 orders triggers rate limiting.
 
         F-PERF-002: Server enforces rate limiting on /orders.
         This test documents the rate limit threshold.
         """
-        async with SMFSClient(BASE_URL, timeout=10) as client:
+        async with SMFSClient(base_url, timeout=10) as client:
             tasks = [client.post("/orders", json=VALID_LIMIT_ORDER) for _ in range(10)]
             responses = await asyncio.gather(*tasks, return_exceptions=True)
 
@@ -140,9 +138,9 @@ class TestOrderRateLimiting:
                 f"Unexpected status distribution: {statuses}"
             )
 
-    async def test_concurrent_orders_unique_ids(self) -> None:
+    async def test_concurrent_orders_unique_ids(self, base_url: str) -> None:
         """Concurrent orders that succeed should have unique orderIds."""
-        async with SMFSClient(BASE_URL, timeout=10) as client:
+        async with SMFSClient(base_url, timeout=10) as client:
             tasks = [client.post("/orders", json=VALID_LIMIT_ORDER) for _ in range(5)]
             responses = await asyncio.gather(*tasks, return_exceptions=True)
 

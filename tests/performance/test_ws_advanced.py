@@ -51,7 +51,7 @@ class TestInterMessageLatency:
                 last = now
         if tracker.count == 0:
             pytest.skip("No messages received")
-        max_gap = max(tracker._samples) if tracker._samples else 0
+        max_gap = tracker.max
         assert max_gap < 15_000, f"Max gap {max_gap:.0f}ms > 15s (feed stall)"
 
 
@@ -69,9 +69,9 @@ class TestConnectionTime:
         assert hello["type"] == "hello"
         assert elapsed < 2000, f"Setup {elapsed:.0f}ms > 2s"
 
-    async def test_10_sequential_avg_under_1500ms(self) -> None:
+    async def test_10_sequential_avg_under_1500ms(self, ws_base_url: str) -> None:
         """Average connection time across 10 sequential connections < 1500ms."""
-        url = "wss://interviews-api.sonic.game/ws?marketId=BTC-PERP"
+        url = f"{ws_base_url}/ws?marketId=BTC-PERP"
         tracker = LatencyTracker()
         for _ in range(10):
             start = time.perf_counter()
@@ -87,9 +87,11 @@ class TestConnectionTime:
 class TestThroughputByType:
     """Message rate breakdown by type."""
 
-    async def test_book_delta_rate_matches_stats(self, market_feed_route: MarketFeedRoute) -> None:
+    async def test_book_delta_rate_matches_stats(
+        self, market_feed_route: MarketFeedRoute, base_url: str
+    ) -> None:
         """/stats bookUpdatesPerSecond roughly matches observed WS rate."""
-        async with SMFSClient("https://interviews-api.sonic.game") as client:
+        async with SMFSClient(base_url) as client:
             stats = (await client.get("/stats")).json()
             btc = stats.get("markets", {}).get("BTC-PERP", {})
             declared = btc.get("bookUpdatesPerSecond", 30)

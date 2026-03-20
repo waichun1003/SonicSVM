@@ -98,13 +98,17 @@ def extract_finding_ids(findings_path: Path) -> set[str]:
 
 def generate_report(results: dict, finding_ids: set[str]) -> str:
     """Generate a markdown failure analysis report."""
-    total = results["passed"] + results["failed"] + results["xfail"] + results["skipped"]
+    total = (
+        results["passed"] + results["failed"] + results["xfail"]
+        + results["skipped"] + results["errors"]
+    )
     lines = [
         "## Test Failure Analysis",
         "",
         f"**Total:** {total} | "
         f"**Passed:** {results['passed']} | "
         f"**Failed:** {results['failed']} | "
+        f"**Errors:** {results['errors']} | "
         f"**xFail:** {results['xfail']} | "
         f"**Skipped:** {results['skipped']}",
         "",
@@ -113,6 +117,16 @@ def generate_report(results: dict, finding_ids: set[str]) -> str:
     if not results["failures"]:
         lines.append("All tests passed. No failures to analyze.")
         return "\n".join(lines)
+
+    matched_findings = set()
+    for f in results["failures"]:
+        for fid in finding_ids:
+            if fid.lower() in f["description"].lower() or fid.lower() in f["message"].lower():
+                matched_findings.add(fid)
+
+    if matched_findings:
+        lines.append(f"**Known findings matched:** {', '.join(sorted(matched_findings))}")
+        lines.append("")
 
     lines.extend(
         [

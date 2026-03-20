@@ -71,7 +71,7 @@
 | R-03 | Crossed order book | REST | Medium | High | **High** | xfail F-REST-002; statistical detection over multiple snapshots |
 | R-04 | Error format inconsistency | REST | Confirmed | Medium | **Medium** | xfail F-REST-004; error responses use text/plain not application/json |
 | R-05 | Invalid marketId silently accepted | WebSocket | Confirmed | High | **High** | xfail F-WS-001; test with invalid/missing marketId |
-| R-06 | Subscribe but no data | Solana | Confirmed | Critical | **Critical** | Deep investigation via F-SOL-001/F-SOL-002; 5 subscribe variants, 30-60s waits |
+| R-06 | Subscribe data intermittent | Solana | Confirmed | High | **High** | Deep investigation via F-SOL-001/F-SOL-002; 5 subscribe variants, 30-60s waits |
 | R-07 | Sequence ordering violations | WebSocket | Low | High | **High** | Collect 50+ messages; assert strict monotonic increment |
 | R-08 | Reconnection data loss | WebSocket | Medium | Medium | **Medium** | Verify fresh hello after reconnect |
 | R-09 | Transient network failures | All | High | Low | **Medium** | pytest-rerunfailures with 3 retries, 2s delay |
@@ -82,7 +82,7 @@
 
 | Rank | Component | Risk Level | Rationale |
 |------|-----------|------------|-----------|
-| 1 | **Solana Transaction Stream** | Critical | Subscribe confirmed but no data delivered; entire stream functionality appears non-operational (F-SOL-001, F-SOL-002) |
+| 1 | **Solana Transaction Stream** | High | Subscribe data delivery is intermittent (~60% success) with no acknowledgment; reliability is insufficient for production use (F-SOL-001, F-SOL-002) |
 | 2 | **WebSocket Market Feed** | High | Invalid marketId silently accepted (F-WS-001); floating-point artifacts in prices (F-WS-002, F-WS-003) |
 | 3 | **REST API** | Medium | All 5 endpoints operational; known issues are float artifacts in snapshot (F-REST-001), crossed book (F-REST-002), error format (F-REST-004) |
 | 4 | **Cross-Component Integration** | Medium | REST-to-WS consistency testable; Stats seq correlates with WS seq |
@@ -331,16 +331,16 @@ Each known finding has a unique ID following the pattern `F-{COMPONENT}-{NNN}`. 
 
 | Finding ID | Severity | Endpoint | Description | Affected Tests |
 |-----------|----------|----------|-------------|----------------|
-| **F-INFRA-001** | High | All REST | Cloudflare error 1010 — requests without `User-Agent` header return 403. Mitigated by adding `User-Agent: smfs-qa/1.0` to SMFSClient. | All REST tests |
+| **F-INFRA-001** | Medium | All REST | Cloudflare error 1010 — requests without `User-Agent` header return 403. Mitigated by adding `User-Agent: smfs-qa/1.0` to SMFSClient. | All REST tests |
 | **F-REST-001** | Medium | `GET /markets/{marketId}/snapshot` | Floating-point price artifacts — prices like `66079.90000000001` instead of clean decimals. IEEE 754 representation issue. | test_snapshot_prices_clean_decimals |
 | **F-REST-002** | Medium | `GET /markets/{marketId}/snapshot` | Crossed order book — best bid sometimes >= best ask, indicating data integrity issue in order book aggregation. | test_snapshot_book_not_crossed |
-| **F-REST-004** | Medium | All error responses | Error responses use `text/plain` Content-Type instead of `application/json`. Affects non-existent paths and some valid-path error cases. | test_error_content_type_is_json |
+| **F-REST-004** | Low | All error responses | Error responses use `text/plain` Content-Type instead of `application/json`. Affects non-existent paths and some valid-path error cases. | test_error_content_type_is_json |
 
 ### 6.2 WebSocket Findings
 
 | Finding ID | Severity | Endpoint | Description | Affected Tests |
 |-----------|----------|----------|-------------|----------------|
-| **F-WS-001** | High | `WS /ws?marketId={invalid}` | Invalid marketId silently accepted — connection succeeds, hello sent, but behavior is undefined. No error message returned for invalid markets. | test_invalid_market_id_rejected, test_missing_market_id_rejected |
+| **F-WS-001** | Medium | `WS /ws?marketId={invalid}` | Invalid marketId silently accepted — connection succeeds, hello sent, but behavior is undefined. No error message returned for invalid markets. | test_invalid_market_id_rejected, test_missing_market_id_rejected |
 | **F-WS-002** | Medium | `WS /ws` book_delta | IEEE 754 floating-point artifacts in order book delta prices. Same root cause as F-REST-001. | test_book_delta_prices_clean_decimals |
 | **F-WS-003** | Medium | `WS /ws` trade | IEEE 754 floating-point artifacts in trade prices. Same root cause as F-REST-001 and F-WS-002. | test_trade_prices_clean_decimals |
 
@@ -348,8 +348,8 @@ Each known finding has a unique ID following the pattern `F-{COMPONENT}-{NNN}`. 
 
 | Finding ID | Severity | Endpoint | Description | Affected Tests |
 |-----------|----------|----------|-------------|----------------|
-| **F-SOL-001** | Critical | `WS /ws/stream` | Subscribe message is acknowledged by the server, but no transaction data is ever delivered. Tested with 5 subscribe variants (bare, System Program, SPL Token, multiple programs, empty array) with 30-60s wait windows. Reproduction rate: 0% data delivery across 5 attempts per variant. | TC-SOL-012 |
-| **F-SOL-002** | Critical | `WS /ws/stream` | No transactions received regardless of subscription filter parameters — System Program, SPL Token, multiple programs, empty array, bare subscribe. This appears to be a systemic issue rather than a filter-specific problem. The stream connection remains alive (ping/pong works) but is inert after subscribe. | -- |
+| **F-SOL-001** | Medium | `WS /ws/stream` | Subscribe data delivery is intermittent (~60% success) with no acknowledgment from the server. Tested with 5 subscribe variants with 30-60s wait windows. | TC-SOL-012 |
+| **F-SOL-002** | Medium | `WS /ws/stream` | Subscribe filter variants (multiple programs, empty array) have similarly intermittent delivery (~67% success). The stream connects and responds to pings, but subscribe data delivery is unreliable. | -- |
 
 ### 6.4 xfail Usage Pattern
 
@@ -457,7 +457,7 @@ The audit is complete when all exit criteria are met.
 | Report | Format | Location |
 |--------|--------|----------|
 | Console output | Text | stdout |
-| JUnit XML | XML | `results/junit.xml` |
+| JUnit XML | XML | `results/live.xml` |
 | Allure results | JSON | `allure-results/` |
 | Allure HTML report | HTML | `allure-report/` (generated from results) |
 
@@ -532,8 +532,10 @@ SonicSVM/
 ├── allure/
 │   └── categories.json                # Allure failure categorization
 └── .github/workflows/
-    ├── test.yml                       # Functional test CI pipeline
-    └── performance.yml                # Performance test CI pipeline
+    ├── smoke.yml                      # Fast CI gate for PRs/pushes
+    ├── regression.yml                 # Full regression suite
+    ├── performance.yml                # Performance benchmarks and load tests
+    └── qa-analyze.yml                 # Automated failure analysis
 ```
 
 ### 9.2 POM Route Model Pattern

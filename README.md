@@ -97,7 +97,7 @@ tests/                     # Test cases only -- no framework code
 | F-SOL-001 | Medium | Subscribe data delivery intermittent |
 | F-SOL-002 | Medium | Subscribe filters intermittent |
 | F-PERF-001 | Medium | /stats bimodal latency (p95 ~3000ms) |
-| F-PERF-002 | Medium | POST /orders rate-limited at 74% under load |
+| F-PERF-002 | Medium | POST /orders rate-limited at ~74% under load |
 | F-PERF-003 | High | GET /snapshot returns 500 under concurrent access |
 
 Full details in [FINDINGS.md](FINDINGS.md).

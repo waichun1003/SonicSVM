@@ -1,4 +1,4 @@
-.PHONY: install test test-rest test-ws test-solana test-e2e test-perf \
+.PHONY: install test test-rest test-ws test-solana test-perf \
        lint format typecheck report clean \
        load-test stress-test soak-test load-test-rest load-test-orders load-test-ws locust-ui
 
@@ -27,9 +27,6 @@ test-ws:
 
 test-solana:
 	pytest tests/solana/ -v --reruns 3
-
-test-e2e:
-	pytest tests/e2e/ -v --reruns 3
 
 test-perf:
 	mkdir -p results
