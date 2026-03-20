@@ -37,7 +37,7 @@ jobs:
   smoke:
     needs: [lint, typecheck]
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 8
     steps:
       - uses: actions/checkout@v4
 
@@ -51,6 +51,7 @@ jobs:
 
       - name: Smoke tests (core endpoints + connections + data integrity)
         run: |
+          mkdir -p results
           pytest \
             tests/rest/test_health.py \
             tests/rest/test_markets.py \
@@ -65,7 +66,22 @@ jobs:
             tests/solana/test_stream_ping.py \
             tests/solana/test_stream_schema.py \
             -v --timeout 60 --reruns 2 \
-            --junitxml=results/smoke.xml
+            --junitxml=results/smoke.xml \
+            --alluredir=allure-results/smoke
+
+      - name: Install Allure CLI
+        if: always()
+        run: |
+          curl -sL https://github.com/allure-framework/allure2/releases/download/2.32.0/allure-2.32.0.tgz | tar xz
+          echo "$PWD/allure-2.32.0/bin" >> $GITHUB_PATH
+
+      - name: Generate Allure HTML report
+        if: always()
+        run: |
+          cp -f allure/environment.properties allure-results/ 2>/dev/null || true
+          cp -f allure/categories.json allure-results/ 2>/dev/null || true
+          cp -f allure/executor.json allure-results/ 2>/dev/null || true
+          allure generate allure-results/smoke -o allure-report-smoke --clean
 
       - name: Upload smoke results
         if: always()
@@ -73,3 +89,10 @@ jobs:
         with:
           name: smoke-results
           path: results/
+
+      - name: Upload Allure smoke report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: allure-report-smoke
+          path: allure-report-smoke/

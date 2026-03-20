@@ -70,11 +70,34 @@ jobs:
             echo "| $suite | ${tests:-0} tests | ${fails:-0} failures |" >> $GITHUB_STEP_SUMMARY
           done
 
+      - name: Install Allure CLI
+        if: always()
+        run: |
+          curl -sL https://github.com/allure-framework/allure2/releases/download/2.32.0/allure-2.32.0.tgz | tar xz
+          echo "$PWD/allure-2.32.0/bin" >> $GITHUB_PATH
+
+      - name: Generate Allure HTML report
+        if: always()
+        run: |
+          cp -f allure/environment.properties allure-results/ 2>/dev/null || true
+          cp -f allure/categories.json allure-results/ 2>/dev/null || true
+          cp -f allure/executor.json allure-results/ 2>/dev/null || true
+          allure generate \
+            allure-results/rest \
+            allure-results/websocket \
+            allure-results/solana \
+            -o allure-report --clean
+
       - name: Upload test results
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: regression-results
-          path: |
-            results/
-            allure-results/
+          path: results/
+
+      - name: Upload Allure report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: allure-report
+          path: allure-report/

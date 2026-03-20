@@ -6,8 +6,8 @@
 
 A comprehensive quality audit of the **Sonic Market Feed Service** (SMFS) on the Sonic SVM (Solana Virtual Machine) network.
 
-**Version:** 1.0
-**Date:** 2026-03-16
+**Version:** 1.1
+**Date:** 2026-03-20
 **Auditor:** Samuel Cheng
 
 **208 automated tests** | **12 findings** | **4-phase CI pipeline** | **6 agent skills**
@@ -37,7 +37,7 @@ make test-solana
 make test-perf
 
 # Load testing (Locust)
-make load-test      # 50 users, 60s
+make load-test      # 50 users, 120s
 make stress-test    # 100 users, 120s
 make locust-ui      # Web UI at localhost:8089
 ```
@@ -108,12 +108,32 @@ Four-phase cascading pipeline with automated failure analysis:
 
 | Phase | Workflow | Trigger | Schedule | Timeout |
 |-------|----------|---------|----------|---------|
-| Smoke | `smoke.yml` | Every push/PR | Twice daily (6am + 6pm UTC) | 5 min |
-| Regression | `regression.yml` | After smoke passes | Twice daily (6:10am + 6:10pm UTC) | 20 min |
+| Smoke | `smoke.yml` | Every push/PR | Twice daily (6am + 6pm UTC) | 8 min |
+| Regression | `regression.yml` | After smoke passes | Twice daily (6:10am + 6:10pm UTC) | 30 min |
 | Performance | `performance.yml` | After regression passes | Daily (3am UTC) | 30 min |
 | QA Analysis | `qa-analyze.yml` | When smoke or regression fails | -- | 5 min |
 
 The pipeline cascades: **push -> smoke -> regression (if smoke passes) -> performance (if regression passes)**. If any phase fails, the QA Analysis workflow automatically classifies failures and posts a summary on the PR.
+
+## Test Reports
+
+Every CI run produces downloadable reports as GitHub Actions artifacts. Navigate to the workflow run page and download from the "Artifacts" section.
+
+| Workflow | Artifact | Description |
+|----------|----------|-------------|
+| Smoke | `allure-report-smoke` | Allure HTML report for smoke tests |
+| Regression | `allure-report` | Allure HTML report for full regression (REST + WS + Solana) |
+| Performance | `allure-report-perf` | Allure HTML report for pytest benchmarks |
+| Performance | `locust-results` | Locust HTML report + CSV stats for load testing |
+
+After downloading an Allure report, serve it locally (browsers block `file://` protocol):
+
+```bash
+cd allure-report && python3 -m http.server 8080
+# Open http://localhost:8080
+```
+
+The Locust HTML report (`locust-report.html`) opens directly in any browser without a server.
 
 ## Agent Skills
 

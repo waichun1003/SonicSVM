@@ -46,26 +46,51 @@ typecheck:
 
 # --- Reporting ---
 
-report:
-	@# Preserve history for Trend widget
-	@if [ -d allure-report/history ]; then \
-		mkdir -p allure-results/history; \
-		cp -r allure-report/history/* allure-results/history/ 2>/dev/null || true; \
-	fi
-	@# Copy metadata files
-	@cp -f allure/environment.properties allure-results/ 2>/dev/null || true
-	@cp -f allure/categories.json allure-results/ 2>/dev/null || true
-	@cp -f allure/executor.json allure-results/ 2>/dev/null || true
-	allure generate allure-results/ -o allure-report/ --clean
-	allure open allure-report/
+report-smoke:
+	@echo "Generating Smoke Allure report..."
+	@for d in allure-results/smoke; do \
+		cp -f allure/environment.properties $$d/ 2>/dev/null || true; \
+		cp -f allure/categories.json $$d/ 2>/dev/null || true; \
+		cp -f allure/executor.json $$d/ 2>/dev/null || true; \
+	done
+	allure generate allure-results/smoke -o allure-report-smoke --clean
+	allure open allure-report-smoke
+
+report-regression:
+	@echo "Generating Regression Allure report..."
+	@for d in allure-results/rest allure-results/websocket allure-results/solana; do \
+		cp -f allure/environment.properties $$d/ 2>/dev/null || true; \
+		cp -f allure/categories.json $$d/ 2>/dev/null || true; \
+		cp -f allure/executor.json $$d/ 2>/dev/null || true; \
+	done
+	allure generate allure-results/rest allure-results/websocket allure-results/solana \
+		-o allure-report --clean
+	allure open allure-report
+
+report-perf:
+	@echo "Generating Performance Allure report..."
+	@for d in allure-results/perf; do \
+		cp -f allure/environment.properties $$d/ 2>/dev/null || true; \
+		cp -f allure/categories.json $$d/ 2>/dev/null || true; \
+		cp -f allure/executor.json $$d/ 2>/dev/null || true; \
+	done
+	allure generate allure-results/perf -o allure-report-perf --clean
+	allure open allure-report-perf
+
+report-all:
+	@echo "Generating all 3 Allure reports..."
+	@$(MAKE) report-smoke MAKEFLAGS=
+	@$(MAKE) report-regression MAKEFLAGS=
+	@$(MAKE) report-perf MAKEFLAGS=
 
 # --- Load Testing (Locust) ---
 
 load-test:
 	mkdir -p results
 	locust -f $(LOCUSTFILE) --host=$(LOCUST_HOST) \
-		--headless -u 50 -r 5 --run-time 60s \
-		--csv=results/locust --html=results/locust_report.html
+		--headless -u 50 -r 10 --run-time 120s \
+		--csv=results/locust --html=results/locust-report.html \
+		--print-stats --only-summary
 
 stress-test:
 	mkdir -p results
@@ -103,5 +128,6 @@ locust-ui:
 # --- Cleanup ---
 
 clean:
-	rm -rf allure-results/ allure-report/ results/ .pytest_cache/ .mypy_cache/
+	rm -rf allure-results/ allure-report/ allure-report-smoke/ allure-report-perf/ \
+		results/ .pytest_cache/ .mypy_cache/
 	find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true

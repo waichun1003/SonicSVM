@@ -1,7 +1,7 @@
 # SMFS Quality Audit -- Findings Report
 
-**Version:** 1.0
-**Date:** 2026-03-16
+**Version:** 1.1
+**Date:** 2026-03-20
 **Auditor:** Samuel Cheng
 **System Under Test:** Sonic Market Feed Service (https://interviews-api.sonic.game)
 
@@ -515,7 +515,7 @@ This inconsistency complicates error handling for API consumers who must handle 
 
 ### Priority 1 (High -- Immediate Action)
 
-1. **Fix GET /snapshot 500 errors under load (F-PERF-003):** The snapshot endpoint returns HTTP 500 at ~6-15% under concurrent access. This is a production reliability issue. Investigate the race condition in the order book assembly and implement error handling (cached fallback or copy-on-write data structure).
+1. **Fix GET /snapshot 500 errors under load (F-PERF-003):** The snapshot endpoint returns HTTP 500 at ~10% under 50 concurrent users (120s sustained load). This is a production reliability issue. Investigate the race condition in the order book assembly and implement error handling (cached fallback or copy-on-write data structure).
 
 2. **Complete Solana Stream Pipeline (F-SOL-001, F-SOL-002):** Data delivery has been partially restored, but acknowledgments and sustained delivery remain broken. Document the subscribe protocol, implement a subscribe acknowledgment, and ensure reliable transaction streaming.
 
@@ -562,13 +562,13 @@ This inconsistency complicates error handling for API consumers who must handle 
 - **Component:** REST API — GET /stats
 - **Test:** `test_stats_p95_within_sla`, `test_stats_p99_within_sla` in `tests/performance/test_rest_latency.py`
 
-**Evidence (Locust 50 users, 60s):**
+**Evidence (Locust 50 users, 120s):**
 
 | Metric | Value |
 |--------|-------|
-| p50 | 520ms |
-| p95 | 3200ms |
-| p99 | 6200ms |
+| p50 | 180ms |
+| p95 | 2700ms |
+| p99 | 3000ms |
 | Error rate | 0% |
 
 **Root cause hypothesis:** The `/stats` endpoint computes `bookUpdatesPerSecond`, `tradesPerSecond`, and `currentSeq` synchronously on each request. Approximately 10% of requests coincide with the aggregation window, causing them to block for 2500-3000ms while the computation completes.
@@ -581,15 +581,15 @@ This inconsistency complicates error handling for API consumers who must handle 
 - **Component:** REST API — POST /orders
 - **Test:** Discovered via Locust load testing (not currently xfail-tested)
 
-**Evidence (Locust 50 users, 60s):**
+**Evidence (Locust 50 users, 120s):**
 
 | Metric | Value |
 |--------|-------|
-| Total requests | 300 |
-| HTTP 429 responses | 223 (74.3%) |
-| Success rate | 25.7% |
-| p50 | 190ms |
-| p95 | 300ms |
+| Total requests | 622 |
+| HTTP 429 responses | 459 (73.8%) |
+| Success rate | 26.2% |
+| p50 | 170ms |
+| p95 | 200ms |
 
 **Root cause hypothesis:** The server enforces rate limiting on the `/orders` endpoint to prevent order spam. The rate limit threshold appears to be approximately 1-2 orders per second per client. Under 50 concurrent users, ~74% of requests exceed this limit.
 
@@ -601,14 +601,14 @@ This inconsistency complicates error handling for API consumers who must handle 
 - **Component:** REST API — GET /markets/BTC-PERP/snapshot
 - **Test:** `test_snapshot_error_rate_under_load` in `tests/performance/test_latency_under_load.py`
 
-**Evidence (Locust 50 users, 60s):**
+**Evidence (Locust 50 users, 120s):**
 
 | Metric | Value |
 |--------|-------|
-| Total requests | 152 |
-| HTTP 500 responses | 10 (6.6%) |
-| p50 | 190ms |
-| p95 | 270ms |
+| Total requests | 355 |
+| HTTP 500 responses | 37 (10.4%) |
+| p50 | 180ms |
+| p95 | 200ms |
 
 **Root cause hypothesis:** The snapshot endpoint assembles the order book from a shared data structure. Under concurrent access, a race condition or lock contention causes the assembly to fail, returning HTTP 500 instead of a partial or cached result. The error rate varies between ~6-15% depending on concurrency level and server load.
 

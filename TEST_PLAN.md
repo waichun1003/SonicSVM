@@ -1,8 +1,8 @@
 # TEST_PLAN.md -- Sonic Market Feed Service Quality Audit
 
-**Version:** 1.0
+**Version:** 1.1
 **Author:** Samuel Cheng
-**Date:** 2026-03-16
+**Date:** 2026-03-20
 **System Under Test:** Sonic Market Feed Service (SMFS)
 **Approach:** Black-box quality audit against a live production service
 
@@ -126,7 +126,7 @@
 | WS message throughput | >= 1 msg/s | Measure over 30s window |
 | Concurrent WS connections | 5 simultaneous | All receive hello + data |
 | Burst tolerance | 20 requests in <1s | 100% success rate |
-| Locust SLA compliance | p95 < 1000ms, error rate < 1% | 50-user headless run, 60s duration |
+| Locust SLA compliance | p95 < 1000ms, error rate < 1% | 50-user headless run, 120s duration |
 
 ### 3.4 Edge Case Tests
 
@@ -448,7 +448,7 @@ The audit is complete when all exit criteria are met.
 | Solana only | `pytest tests/solana/ -v` | Solana stream tests only |
 | Performance only | `pytest tests/performance/ -v` | Performance benchmarks only |
 | With retries | `pytest --reruns 3 --reruns-delay 2` | CI-grade with retry tolerance |
-| Load test | `make load-test` | Locust headless, 50 users, 60s |
+| Load test | `make load-test` | Locust headless, 50 users, 120s |
 | Stress test | `make stress-test` | Locust headless, 100 users, 120s |
 | Locust UI | `make locust-ui` | Locust web UI on http://localhost:8089 |
 
@@ -658,7 +658,7 @@ test_sequence.py ──> MarketFeedRoute.connect() ──> WS /ws?marketId=...
 **Concurrent connections:** Multiple WebSocket connections are opened simultaneously using `asyncio.gather()`. Success criterion is that all connections receive a `hello` message and at least one `book_delta` within the timeout window.
 
 **Load testing:** Locust is used for sustained load generation against REST endpoints. Two profiles are defined:
-- **Smoke test:** 50 users, 60s, SLA: p95 < 1000ms and error rate < 1%
+- **Smoke test:** 50 users, 120s, SLA: p95 < 1000ms and error rate < 1%
 - **Stress test:** 100 users, 120s, same SLA thresholds
 
 ### 11.2 SLA Thresholds
@@ -716,11 +716,24 @@ Allure categories (defined in `allure/categories.json`) classify failures:
 
 ### 12.3 CI Artifacts
 
-| Artifact | Format | Purpose |
-|----------|--------|---------|
-| `junit.xml` | JUnit XML | GitHub Actions test summary |
-| `allure-results/` | JSON files | Raw Allure data for report generation |
-| `allure-report/` | HTML | Human-readable test report |
+Each workflow uploads downloadable artifacts to the GitHub Actions run page:
+
+| Workflow | Artifact Name | Contents | Format |
+|----------|--------------|----------|--------|
+| Smoke | `smoke-results` | `results/smoke.xml` | JUnit XML |
+| Smoke | `allure-report-smoke` | Allure HTML report (smoke tests) | HTML |
+| Regression | `regression-results` | `results/rest.xml`, `websocket.xml`, `solana.xml` | JUnit XML |
+| Regression | `allure-report` | Allure HTML report (full regression) | HTML |
+| Performance | `perf-benchmark-results` | `results/perf-benchmark.xml` | JUnit XML |
+| Performance | `allure-report-perf` | Allure HTML report (pytest benchmarks) | HTML |
+| Performance | `locust-results` | `locust-report.html`, `locust_stats.csv`, `locust_failures.csv` | HTML + CSV |
+
+To view Allure HTML reports after downloading, serve them via a local HTTP server (Allure requires HTTP, not `file://`):
+
+```bash
+cd allure-report && python3 -m http.server 8080
+# Open http://localhost:8080
+```
 
 ---
 

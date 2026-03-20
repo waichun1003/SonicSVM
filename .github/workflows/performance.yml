@@ -38,18 +38,37 @@ jobs:
             --junitxml=results/perf-benchmark.xml \
             --alluredir=allure-results/perf
 
+      - name: Install Allure CLI
+        if: always()
+        run: |
+          curl -sL https://github.com/allure-framework/allure2/releases/download/2.32.0/allure-2.32.0.tgz | tar xz
+          echo "$PWD/allure-2.32.0/bin" >> $GITHUB_PATH
+
+      - name: Generate Allure HTML report
+        if: always()
+        run: |
+          cp -f allure/environment.properties allure-results/ 2>/dev/null || true
+          cp -f allure/categories.json allure-results/ 2>/dev/null || true
+          cp -f allure/executor.json allure-results/ 2>/dev/null || true
+          allure generate allure-results/perf -o allure-report-perf --clean
+
       - name: Upload benchmark results
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: perf-benchmark-results
-          path: |
-            results/
-            allure-results/
+          path: results/
+
+      - name: Upload Allure performance report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: allure-report-perf
+          path: allure-report-perf/
 
   locust:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     if: >
       github.event_name == 'workflow_dispatch' ||
       github.event_name == 'schedule' ||
@@ -68,16 +87,17 @@ jobs:
       - name: Create results directory
         run: mkdir -p results
 
-      - name: Locust load test (50 users, 60s)
+      - name: Locust load test (50 users, 120s)
         continue-on-error: true
         run: |
           locust -f src/smfs_qa/locustfile.py \
             --headless \
-            --users 50 --spawn-rate 5 \
-            --run-time 60s \
+            --users 50 --spawn-rate 10 \
+            --run-time 120s \
             --host https://interviews-api.sonic.game \
             --csv=results/locust \
-            --html=results/locust-report.html
+            --html=results/locust-report.html \
+            --print-stats --only-summary
 
       - name: Upload Locust results
         if: always()
