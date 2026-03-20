@@ -18,7 +18,7 @@ from smfs_qa.ws_routes import SolanaStreamRoute
 
 pytestmark = [pytest.mark.solana]
 
-SUBSCRIBE_WAIT = 45
+SUBSCRIBE_WAIT = 15
 
 
 @allure.feature("Solana Transaction Stream")

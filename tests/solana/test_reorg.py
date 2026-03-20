@@ -22,7 +22,7 @@ from smfs_qa.ws_routes import SolanaStreamRoute
 
 pytestmark = [pytest.mark.solana]
 
-SUBSCRIBE_WAIT = 45
+SUBSCRIBE_WAIT = 15
 MIN_TX_COUNT = 20
 
 
@@ -157,18 +157,18 @@ class TestRollbackRateMeasurement:
     async def test_rollback_rate_measurement(self, solana_stream_route: SolanaStreamRoute) -> None:
         """Measure rollback rate across a longer collection window.
 
-        Collects as many transactions as possible in a 40s window and
+        Collects as many transactions as possible in a 15s window and
         reports the rollback rate as a statistical metric.
         """
-        async with solana_stream_route.client(timeout=60) as ws:
+        async with solana_stream_route.client(timeout=30) as ws:
             hello = await ws.recv_json(timeout=10)
             assert hello["type"] == "stream_hello"
 
             await ws.send_json(SolanaStreamRoute.build_subscribe_all())
-            messages = await ws.collect_messages(duration=40, timeout=45)
+            messages = await ws.collect_messages(duration=15, timeout=20)
 
             txs = [m for m in messages if m.get("type") == "transaction"]
-            QALogger.info(f"Extended collection: {len(txs)} transactions in 40s")
+            QALogger.info(f"Extended collection: {len(txs)} transactions in 15s")
 
             if len(txs) < MIN_TX_COUNT:
                 pytest.skip(

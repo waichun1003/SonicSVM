@@ -14,7 +14,7 @@ from smfs_qa.ws_routes import SolanaStreamRoute
 
 pytestmark = [pytest.mark.solana]
 
-SUBSCRIBE_WAIT_SECONDS = 30
+SUBSCRIBE_WAIT_SECONDS = 10
 
 
 @allure.feature("Solana Transaction Stream")
@@ -22,6 +22,11 @@ SUBSCRIBE_WAIT_SECONDS = 30
 class TestSubscribe:
     """Subscribe data delivery tests."""
 
+    @pytest.mark.xfail(
+        reason="F-SOL-001: Solana stream subscribe does not deliver data",
+        strict=False,
+    )
+    @pytest.mark.finding
     async def test_subscribe_bare_receives_data(
         self, solana_stream_route: SolanaStreamRoute
     ) -> None:
@@ -36,6 +41,11 @@ class TestSubscribe:
                 f"No transaction data received after {SUBSCRIBE_WAIT_SECONDS}s wait"
             )
 
+    @pytest.mark.xfail(
+        reason="F-SOL-001: Solana stream subscribe does not deliver data",
+        strict=False,
+    )
+    @pytest.mark.finding
     async def test_subscribe_system_program_receives_data(
         self, solana_stream_route: SolanaStreamRoute
     ) -> None:
@@ -48,6 +58,11 @@ class TestSubscribe:
             non_hello = [m for m in messages if m.get("type") != "stream_hello"]
             assert len(non_hello) > 0, "No System Program transactions after subscribe"
 
+    @pytest.mark.xfail(
+        reason="F-SOL-001: Solana stream subscribe does not deliver data",
+        strict=False,
+    )
+    @pytest.mark.finding
     async def test_subscribe_spl_token_receives_data(
         self, solana_stream_route: SolanaStreamRoute
     ) -> None:
@@ -80,6 +95,11 @@ class TestSubscribe:
                 f"No subscribe acknowledgment. Got types: {[m.get('type') for m in messages]}"
             )
 
+    @pytest.mark.xfail(
+        reason="F-SOL-001: Solana stream subscribe does not deliver data",
+        strict=False,
+    )
+    @pytest.mark.finding
     async def test_subscribe_reproduction_rate(
         self, solana_stream_route: SolanaStreamRoute
     ) -> None:

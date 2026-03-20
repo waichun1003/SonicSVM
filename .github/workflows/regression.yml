@@ -12,7 +12,7 @@ on:
 jobs:
   regression:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
     if: >
       github.event_name == 'workflow_dispatch' ||
       github.event_name == 'schedule' ||
@@ -53,8 +53,8 @@ jobs:
       - name: Run Solana stream tests
         run: |
           pytest tests/solana/ -v \
-            --reruns 3 --reruns-delay 2 \
-            --timeout 180 \
+            --reruns 1 --reruns-delay 2 \
+            --timeout 60 \
             --junitxml=results/solana.xml \
             --alluredir=allure-results/solana
 
