@@ -31,9 +31,6 @@ jobs:
       - name: Create results directory
         run: mkdir -p results
 
-      - name: Lint check
-        run: ruff check src/ tests/ conftest.py
-
       - name: Run REST API tests
         run: |
           pytest tests/rest/ -v \

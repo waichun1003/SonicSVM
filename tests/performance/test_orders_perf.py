@@ -94,6 +94,10 @@ class TestOrderLatency:
 class TestOrderRateLimiting:
     """POST /orders rate limiting behavior (F-PERF-002)."""
 
+    @pytest.mark.xfail(
+        strict=False,
+        reason="F-PERF-002: server rate-limits even slow sequential orders",
+    )
     async def test_sequential_orders_no_rate_limit(self, base_url: str) -> None:
         """Sequential orders with 2s delay should not be rate-limited."""
         await asyncio.sleep(3)

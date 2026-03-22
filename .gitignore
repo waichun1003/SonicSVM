@@ -17,6 +17,8 @@ ENV/
 results/
 allure-results/
 allure-report/
+allure-report-smoke/
+allure-report-perf/
 .pytest_cache/
 htmlcov/
 .coverage
