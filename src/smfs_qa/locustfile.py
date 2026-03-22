@@ -40,6 +40,7 @@ def on_test_start(environment, **kwargs) -> None:
     print(f"  Users: {users}  |  Spawn rate: {rate}/s  |  Duration: {dur}")
     print("=" * 72 + "\n")
 
+
 # ---------------------------------------------------------------------------
 # REST API Users
 # ---------------------------------------------------------------------------
@@ -337,8 +338,10 @@ def check_sla(environment, **kwargs) -> None:
     print(f"  Response time:   p50={p50:.0f}ms  p95={p95:.0f}ms  p99={p99:.0f}ms")
     print("-" * 72)
 
-    print(f"  {'Type':<6} {'Endpoint':<35} {'Reqs':>6} {'Fail':>6} "
-          f"{'Avg':>7} {'p50':>7} {'p95':>7} {'p99':>7} {'Err%':>7}")
+    print(
+        f"  {'Type':<6} {'Endpoint':<35} {'Reqs':>6} {'Fail':>6} "
+        f"{'Avg':>7} {'p50':>7} {'p95':>7} {'p99':>7} {'Err%':>7}"
+    )
     print("-" * 72)
 
     for entry in sorted(stats.entries.values(), key=lambda e: e.name):
@@ -380,17 +383,13 @@ def check_sla(environment, **kwargs) -> None:
                         f"/snapshot error rate = {entry.fail_ratio:.1%} (SLA: < 15%)"
                     )
                 else:
-                    sla_passes.append(
-                        f"/snapshot error rate = {entry.fail_ratio:.1%} (SLA: < 15%)"
-                    )
+                    sla_passes.append(f"/snapshot error rate = {entry.fail_ratio:.1%} (SLA: < 15%)")
 
     for entry in stats.entries.values():
         if "stats" in entry.name.lower():
             ep95_stats = entry.get_response_time_percentile(0.95) or 0
             if ep95_stats > 3000:
-                sla_failures.append(
-                    f"/stats p95 = {ep95_stats:.0f}ms (SLA: < 3000ms, F-PERF-001)"
-                )
+                sla_failures.append(f"/stats p95 = {ep95_stats:.0f}ms (SLA: < 3000ms, F-PERF-001)")
             else:
                 sla_passes.append(f"/stats p95 = {ep95_stats:.0f}ms (SLA: < 3000ms)")
 
@@ -406,17 +405,21 @@ def check_sla(environment, **kwargs) -> None:
         if entry.name == "/orders" and entry.num_failures > 0:
             order_entry = entry
     if order_entry:
-        print(f"    F-PERF-002: POST /orders rate-limited "
-              f"({order_entry.num_failures}/{order_entry.num_requests} = "
-              f"{order_entry.fail_ratio:.1%} HTTP 429)")
+        print(
+            f"    F-PERF-002: POST /orders rate-limited "
+            f"({order_entry.num_failures}/{order_entry.num_requests} = "
+            f"{order_entry.fail_ratio:.1%} HTTP 429)"
+        )
     snapshot_entry = None
     for entry in stats.entries.values():
         if entry.name == "/markets/BTC-PERP/snapshot" and entry.num_failures > 0:
             snapshot_entry = entry
     if snapshot_entry:
-        print(f"    F-PERF-003: /snapshot intermittent 500 "
-              f"({snapshot_entry.num_failures}/{snapshot_entry.num_requests} = "
-              f"{snapshot_entry.fail_ratio:.1%})")
+        print(
+            f"    F-PERF-003: /snapshot intermittent 500 "
+            f"({snapshot_entry.num_failures}/{snapshot_entry.num_requests} = "
+            f"{snapshot_entry.fail_ratio:.1%})"
+        )
     stats_entry = None
     for entry in stats.entries.values():
         if "stats" in entry.name.lower():
@@ -424,8 +427,7 @@ def check_sla(environment, **kwargs) -> None:
     if stats_entry:
         ep95_stats = stats_entry.get_response_time_percentile(0.95) or 0
         if ep95_stats > 1000:
-            print(f"    F-PERF-001: /stats bimodal latency "
-                  f"(p95={ep95_stats:.0f}ms)")
+            print(f"    F-PERF-001: /stats bimodal latency (p95={ep95_stats:.0f}ms)")
     if not order_entry and not snapshot_entry:
         print("    None detected in this run")
 
