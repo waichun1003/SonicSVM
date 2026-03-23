@@ -6,6 +6,7 @@ on:
     types: [completed]
 
 permissions:
+  actions: read
   pull-requests: write
   contents: read
 
@@ -24,6 +25,7 @@ jobs:
           python-version: "3.11"
 
       - name: Download test artifacts
+        id: download
         uses: actions/download-artifact@v4
         with:
           run-id: ${{ github.event.workflow_run.id }}
@@ -42,42 +44,53 @@ jobs:
             ls -la results/*.xml
           else
             echo "found=false" >> $GITHUB_OUTPUT
-            echo "No JUnit XML artifacts found -- using gh CLI to get logs"
+            echo "No JUnit XML artifacts found"
           fi
 
-      - name: Analyze from logs (fallback)
-        if: steps.find-results.outputs.found != 'true'
-        run: |
-          echo "## QA Failure Analysis" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Workflow:** ${{ github.event.workflow_run.name }}" >> $GITHUB_STEP_SUMMARY
-          echo "**Run:** [#${{ github.event.workflow_run.id }}](${{ github.event.workflow_run.html_url }})" >> $GITHUB_STEP_SUMMARY
-          echo "**Status:** ${{ github.event.workflow_run.conclusion }}" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "No JUnit XML artifacts available. Check the [workflow run logs](${{ github.event.workflow_run.html_url }}) directly." >> $GITHUB_STEP_SUMMARY
-
-      - name: Run failure analysis
+      - name: Analyze from JUnit XML
         if: steps.find-results.outputs.found == 'true'
+        id: xml-analysis
         run: |
           python scripts/analyze_results.py results/*.xml --findings FINDINGS.md > analysis.md
           cat analysis.md
 
-          # Post to Job Summary
+      - name: Analyze from workflow logs (fallback)
+        if: steps.find-results.outputs.found != 'true'
+        id: log-analysis
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          WORKFLOW_NAME: ${{ github.event.workflow_run.name }}
+          RUN_ID: ${{ github.event.workflow_run.id }}
+          RUN_URL: ${{ github.event.workflow_run.html_url }}
+        run: |
+          python scripts/analyze_logs.py > analysis.md
+          cat analysis.md
+
+      - name: Post to Job Summary
+        if: always()
+        env:
+          WORKFLOW_NAME: ${{ github.event.workflow_run.name }}
+          RUN_ID: ${{ github.event.workflow_run.id }}
+          RUN_URL: ${{ github.event.workflow_run.html_url }}
+        run: |
           echo "## QA Failure Analysis" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Workflow:** ${{ github.event.workflow_run.name }}" >> $GITHUB_STEP_SUMMARY
-          echo "**Run:** [#${{ github.event.workflow_run.id }}](${{ github.event.workflow_run.html_url }})" >> $GITHUB_STEP_SUMMARY
+          echo "**Workflow:** ${WORKFLOW_NAME}" >> $GITHUB_STEP_SUMMARY
+          echo "**Run:** [#${RUN_ID}](${RUN_URL})" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          cat analysis.md >> $GITHUB_STEP_SUMMARY
+          if [ -f analysis.md ]; then
+            cat analysis.md >> $GITHUB_STEP_SUMMARY
+          else
+            echo "Analysis could not be produced. Check the [workflow run logs](${RUN_URL}) directly." >> $GITHUB_STEP_SUMMARY
+          fi
 
       - name: Comment on PR (if applicable)
-        if: steps.find-results.outputs.found == 'true'
+        if: always() && hashFiles('analysis.md') != ''
         uses: actions/github-script@v7
         with:
           script: |
             const fs = require('fs');
 
-            // Find the PR associated with the workflow run
             const headSha = '${{ github.event.workflow_run.head_sha }}';
             const { data: prs } = await github.rest.pulls.list({
               owner: context.repo.owner,
