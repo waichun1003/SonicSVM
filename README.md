@@ -6,8 +6,8 @@
 
 A comprehensive quality audit of the **Sonic Market Feed Service** (SMFS) on the Sonic SVM (Solana Virtual Machine) network.
 
-**Version:** 1.1
-**Date:** 2026-03-20
+**Version:** 1.2
+**Date:** 2026-03-23
 **Auditor:** Samuel Cheng
 
 **208 automated tests** | **12 findings** | **4-phase CI pipeline** | **6 agent skills**
@@ -75,13 +75,15 @@ tests/                     # Test cases only -- no framework code
 
 ## Test Results
 
-| Suite | Passed | xFail | Total |
-|-------|--------|-------|-------|
-| REST API | 67 | 5 | 72 |
-| WebSocket | 41 | 3 | 44 |
-| Solana | 52 | 2 | 54 |
-| Performance | 36 | 2 | 38 |
-| **Total** | **196** | **12** | **208** |
+| Suite | Passed | xFail | Skipped | Total |
+|-------|--------|-------|---------|-------|
+| REST API | 67 | 4 | -- | 72 |
+| WebSocket | 41 | 3 | -- | 44 |
+| Solana | 38 | 8 | 8 | 54 |
+| Performance | 34 | 3 | 1 | 38 |
+| **Total** | **180** | **18** | **9** | **208** |
+
+*Results from the 2026-03-23 CI run. One REST test (F-REST-002: crossed order book) xpassed, suggesting the reproduction rate may be declining. Solana skipped tests are data-dependent subscribe tests that rely on the intermittently available transaction stream.*
 
 ## Findings (12 total)
 
@@ -96,8 +98,8 @@ tests/                     # Test cases only -- no framework code
 | F-WS-003 | Medium | Floating-point artifacts in trade prices |
 | F-SOL-001 | Medium | Subscribe data delivery intermittent |
 | F-SOL-002 | Medium | Subscribe filters intermittent |
-| F-PERF-001 | Medium | /stats bimodal latency (p95 ~3000ms) |
-| F-PERF-002 | Medium | POST /orders rate-limited at ~74% under load |
+| F-PERF-001 | Medium | /stats bimodal latency (p95 ~2800ms) |
+| F-PERF-002 | Medium | POST /orders rate-limited at ~76% under load |
 | F-PERF-003 | High | GET /snapshot returns 500 under concurrent access |
 
 Full details in [FINDINGS.md](FINDINGS.md).

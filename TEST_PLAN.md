@@ -1,8 +1,8 @@
 # TEST_PLAN.md -- Sonic Market Feed Service Quality Audit
 
-**Version:** 1.1
+**Version:** 1.2
 **Author:** Samuel Cheng
-**Date:** 2026-03-20
+**Date:** 2026-03-23
 **System Under Test:** Sonic Market Feed Service (SMFS)
 **Approach:** Black-box quality audit against a live production service
 
@@ -82,7 +82,7 @@
 
 | Rank | Component | Risk Level | Rationale |
 |------|-----------|------------|-----------|
-| 1 | **Solana Transaction Stream** | High | Subscribe data delivery is intermittent (~60% success) with no acknowledgment; reliability is insufficient for production use (F-SOL-001, F-SOL-002) |
+| 1 | **Solana Transaction Stream** | High | Subscribe data delivery is intermittent (~60% success) with no acknowledgment. In the latest CI run (2026-03-23), 8 of 54 tests were skipped (data-dependent subscribe tests) and 8 xfailed, reflecting the stream's unreliable state (F-SOL-001, F-SOL-002) |
 | 2 | **WebSocket Market Feed** | High | Invalid marketId silently accepted (F-WS-001); floating-point artifacts in prices (F-WS-002, F-WS-003) |
 | 3 | **REST API** | Medium | All 5 endpoints operational; known issues are float artifacts in snapshot (F-REST-001), crossed book (F-REST-002), error format (F-REST-004) |
 | 4 | **Cross-Component Integration** | Medium | REST-to-WS consistency testable; Stats seq correlates with WS seq |
@@ -370,6 +370,8 @@ async def test_snapshot_prices_clean_decimals(snapshot_route):
 ```
 
 **Why `strict=True` matters:** If the API is fixed and the endpoint starts returning 200, the test will XPASS (unexpectedly pass), which `strict=True` treats as a failure. This forces the team to remove the xfail marker and update FINDINGS.md, ensuring the audit stays accurate.
+
+**When to use `strict=False`:** Intermittent findings (F-REST-001, F-REST-002, F-WS-002, F-WS-003, F-SOL-001, F-SOL-002) use `strict=False` because the issue does not always reproduce. An XPASS with `strict=False` is recorded but does not fail CI. As of the 2026-03-23 CI run, F-REST-002 (crossed order book) xpassed in both smoke and regression, which suggests the server may have improved -- but the finding remains open until consistently confirmed as resolved.
 
 ---
 

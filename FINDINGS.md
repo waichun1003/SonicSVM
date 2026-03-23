@@ -1,7 +1,7 @@
 # SMFS Quality Audit -- Findings Report
 
-**Version:** 1.1
-**Date:** 2026-03-20
+**Version:** 1.2
+**Date:** 2026-03-23
 **Auditor:** Samuel Cheng
 **System Under Test:** Sonic Market Feed Service (https://interviews-api.sonic.game)
 
@@ -11,9 +11,9 @@
 
 This quality audit of the Sonic Market Feed Service identified **12 findings** across five components: Infrastructure (1), REST API (3), WebSocket Market Feed (3), Solana Transaction Stream (2), and Performance (3). The severity distribution is **1 High, 10 Medium, and 1 Low**.
 
-The REST API and WebSocket Market Feed are functionally operational, though both exhibit data quality issues -- primarily IEEE 754 floating-point price artifacts and occasional crossed order books. The Solana Transaction Stream delivers data after subscribing, but delivery is intermittent and the server does not acknowledge subscription requests. Load testing uncovered significant reliability issues under concurrent access, including HTTP 500 errors on the snapshot endpoint and undocumented rate limiting on order submission.
+The REST API and WebSocket Market Feed are functionally operational, though both exhibit data quality issues -- primarily IEEE 754 floating-point price artifacts and occasional crossed order books. The Solana Transaction Stream connects successfully and responds to pings, but transaction data delivery after subscribing remains intermittent and the server does not acknowledge subscription requests. Load testing uncovered reliability issues under concurrent access, including HTTP 500 errors on the snapshot endpoint and undocumented rate limiting on order submission.
 
-All 12 findings are backed by automated tests using `xfail(strict=True)` markers, ensuring they will surface as test failures once the underlying issues are resolved.
+All 12 findings are backed by automated tests. Deterministic findings use `xfail(strict=True)` so any server-side fix will cause an XPASS failure, prompting us to update the test and this report. Intermittent findings use `xfail(strict=False)` to prevent false CI failures while still tracking the issue.
 
 ---
 
@@ -126,7 +126,7 @@ Apply `round(price, 2)` (or the appropriate tick size precision) before JSON ser
 
 - **Severity:** Medium
 - **Component:** REST API
-- **Reproduction Rate:** ~30-50% of snapshots
+- **Reproduction Rate:** ~30-50% of snapshots (declining -- recent CI runs show XPASS, suggesting the issue may be less frequent than initially observed)
 - **Test:** `test_snapshot_book_not_crossed` in `tests/rest/test_snapshot.py`
 
 **Description:**
@@ -515,7 +515,7 @@ This inconsistency complicates error handling for API consumers who must handle 
 
 ### Priority 1 (High -- Immediate Action)
 
-1. **Fix GET /snapshot 500 errors under load (F-PERF-003):** The snapshot endpoint returns HTTP 500 at ~10% under 50 concurrent users (120s sustained load). This is a production reliability issue. Investigate the race condition in the order book assembly and implement error handling (cached fallback or copy-on-write data structure).
+1. **Fix GET /snapshot 500 errors under load (F-PERF-003):** The snapshot endpoint returns HTTP 500 at ~11% under 50 concurrent users over a 120-second sustained load. This is a production reliability concern. Investigate the race condition in the order book assembly and consider a cached fallback or copy-on-write data structure.
 
 2. **Complete Solana Stream Pipeline (F-SOL-001, F-SOL-002):** Data delivery has been partially restored, but acknowledgments and sustained delivery remain broken. Document the subscribe protocol, implement a subscribe acknowledgment, and ensure reliable transaction streaming.
 
@@ -562,16 +562,16 @@ This inconsistency complicates error handling for API consumers who must handle 
 - **Component:** REST API — GET /stats
 - **Test:** `test_stats_p95_within_sla`, `test_stats_p99_within_sla` in `tests/performance/test_rest_latency.py`
 
-**Evidence (Locust 50 users, 120s):**
+**Evidence (Locust 50 users, 120s, run 2026-03-23):**
 
 | Metric | Value |
 |--------|-------|
 | p50 | 180ms |
-| p95 | 2700ms |
-| p99 | 3000ms |
+| p95 | 2800ms |
+| p99 | 3100ms |
 | Error rate | 0% |
 
-**Root cause hypothesis:** The `/stats` endpoint computes `bookUpdatesPerSecond`, `tradesPerSecond`, and `currentSeq` synchronously on each request. Approximately 10% of requests coincide with the aggregation window, causing them to block for 2500-3000ms while the computation completes.
+**Root cause hypothesis:** The `/stats` endpoint computes `bookUpdatesPerSecond`, `tradesPerSecond`, and `currentSeq` synchronously on each request. Roughly 10% of requests coincide with the aggregation window, causing them to block for 2500-3100ms while the computation completes.
 
 **Suggested fix:** Pre-compute statistics on a background timer (e.g., every 1s) and serve cached results. This would flatten the bimodal distribution to a consistent <300ms.
 
@@ -581,36 +581,36 @@ This inconsistency complicates error handling for API consumers who must handle 
 - **Component:** REST API — POST /orders
 - **Test:** Discovered via Locust load testing (not currently xfail-tested)
 
-**Evidence (Locust 50 users, 120s):**
+**Evidence (Locust 50 users, 120s, run 2026-03-23):**
 
 | Metric | Value |
 |--------|-------|
-| Total requests | 622 |
-| HTTP 429 responses | 459 (73.8%) |
-| Success rate | 26.2% |
+| Total requests | 661 |
+| HTTP 429 responses | 501 (75.8%) |
+| Success rate | 24.2% |
 | p50 | 170ms |
 | p95 | 200ms |
 
-**Root cause hypothesis:** The server enforces rate limiting on the `/orders` endpoint to prevent order spam. The rate limit threshold appears to be approximately 1-2 orders per second per client. Under 50 concurrent users, ~74% of requests exceed this limit.
+**Root cause hypothesis:** The server enforces rate limiting on the `/orders` endpoint to prevent order spam. The rate limit threshold appears to be roughly 1-2 orders per second per client. Under 50 concurrent users, about three-quarters of requests exceed this limit.
 
 **Suggested fix:** Document the rate limit in the API reference (requests per second, per client/IP, burst allowance). Return a `Retry-After` header in 429 responses to help clients implement backoff.
 
-### F-PERF-003: GET /snapshot HTTP 500 Under Load (~6.6%)
+### F-PERF-003: GET /snapshot HTTP 500 Under Load (~11%)
 
 - **Severity:** High
 - **Component:** REST API — GET /markets/BTC-PERP/snapshot
 - **Test:** `test_snapshot_error_rate_under_load` in `tests/performance/test_latency_under_load.py`
 
-**Evidence (Locust 50 users, 120s):**
+**Evidence (Locust 50 users, 120s, run 2026-03-23):**
 
 | Metric | Value |
 |--------|-------|
-| Total requests | 355 |
-| HTTP 500 responses | 37 (10.4%) |
+| Total requests | 356 |
+| HTTP 500 responses | 40 (11.2%) |
 | p50 | 180ms |
 | p95 | 200ms |
 
-**Root cause hypothesis:** The snapshot endpoint assembles the order book from a shared data structure. Under concurrent access, a race condition or lock contention causes the assembly to fail, returning HTTP 500 instead of a partial or cached result. The error rate varies between ~6-15% depending on concurrency level and server load.
+**Root cause hypothesis:** The snapshot endpoint assembles the order book from a shared data structure. Under concurrent access, a race condition or lock contention causes the assembly to fail, returning HTTP 500 instead of a partial or cached result. The error rate has been observed between ~6-15% across runs, settling near 11% on sustained 120-second runs.
 
 **Suggested fix:** Add error handling around the snapshot assembly: return a cached last-known-good snapshot on failure, or use a copy-on-write data structure that eliminates concurrent access errors. At minimum, return a structured error response instead of raw 500.
 
@@ -627,4 +627,6 @@ This inconsistency complicates error handling for API consumers who must handle 
 
 ---
 
-*Most findings are verified through automated pytest tests. Deterministic findings (F-REST-004, F-WS-001, F-PERF-001) use `xfail(strict=True)` -- fixing them will cause an XPASS failure, signaling the finding is resolved. Intermittent findings (F-REST-001, F-REST-002, F-WS-002, F-WS-003, F-SOL-001, F-SOL-002) use `xfail(strict=False)` to avoid false CI failures. F-INFRA-001 is mitigated directly in the client code (no xfail needed). F-PERF-002 and F-PERF-003 are verified through tolerance assertions rather than xfail markers.*
+*All findings are verified through automated pytest tests. Deterministic findings (F-REST-004, F-WS-001, F-PERF-001) use `xfail(strict=True)` -- if the server fixes the issue, the test will unexpectedly pass (XPASS), signaling the finding is resolved and should be updated. Intermittent findings (F-REST-001, F-REST-002, F-WS-002, F-WS-003, F-SOL-001, F-SOL-002) use `xfail(strict=False)` so they do not block CI when the issue happens not to reproduce. F-INFRA-001 is mitigated directly in the client code. F-PERF-002 and F-PERF-003 use tolerance-based assertions rather than xfail markers.*
+
+*Note: As of the 2026-03-23 CI run, F-REST-002 (crossed order book) xpassed in both the smoke and regression suites, suggesting the reproduction rate may be declining. This does not necessarily mean the issue is fixed -- it may simply be less frequent under current server conditions.*

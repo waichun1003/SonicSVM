@@ -1,7 +1,7 @@
 # SMFS Performance Benchmark Report
 
-**Version:** 1.1
-**Date:** 2026-03-20
+**Version:** 1.2
+**Date:** 2026-03-23
 **Auditor:** Samuel Cheng
 **Target:** `https://interviews-api.sonic.game`
 **Tools:** pytest + numpy (latency benchmarks), Locust (load simulation)
@@ -13,9 +13,9 @@
 
 The SMFS service performs well under normal conditions with consistent sub-300ms REST latency and a 30+ msg/s WebSocket feed. Three performance findings were identified:
 
-1. **F-PERF-001** (Medium): `/stats` bimodal latency -- p50 ~180ms but p95 spikes to ~2700ms due to periodic server-side aggregation
-2. **F-PERF-002** (Medium): `POST /orders` returns HTTP 429 at ~74% rate under concurrent load -- undocumented rate limiting
-3. **F-PERF-003** (High): `GET /snapshot` returns HTTP 500 at ~10% under 50 concurrent users (120s run) -- race condition in order book assembly
+1. **F-PERF-001** (Medium): `/stats` bimodal latency -- p50 ~180ms but p95 spikes to ~2800ms due to periodic server-side aggregation
+2. **F-PERF-002** (Medium): `POST /orders` returns HTTP 429 at ~76% rate under concurrent load -- undocumented rate limiting
+3. **F-PERF-003** (High): `GET /snapshot` returns HTTP 500 at ~11% under 50 concurrent users (120s run) -- race condition in order book assembly
 
 ---
 
@@ -71,19 +71,19 @@ Under sustained concurrent load over 2 minutes, p50 latency remains stable but p
 |----------|----------|----------|----------|----------|--------|
 | GET /health | 180 | 200 | 230 | 710 | PASS |
 | GET /markets | 170 | 190 | 270 | 311 | PASS |
-| GET /snapshot | 180 | 200 | 250 | 720 | PASS (10.4% HTTP 500) |
-| POST /orders | 170 | 200 | 240 | 710 | PASS (73.8% HTTP 429) |
-| GET /stats | 180 | 2700 | 3000 | 3093 | FAIL -- bimodal |
+| GET /snapshot | 180 | 200 | 250 | 720 | PASS (11.2% HTTP 500) |
+| POST /orders | 170 | 200 | 240 | 710 | PASS (75.8% HTTP 429) |
+| GET /stats | 180 | 2800 | 3100 | 3200 | FAIL -- bimodal |
 
 ### /stats Endpoint (F-PERF-001: Bimodal Latency)
 
 | Metric | Value | SLA | Status |
 |--------|-------|-----|--------|
 | p50 | 180ms | < 300ms | PASS |
-| p95 | 2700ms | < 1000ms | **FAIL (xfail)** |
-| p99 | 3000ms | < 2000ms | **FAIL (xfail)** |
+| p95 | 2800ms | < 1000ms | **FAIL (xfail)** |
+| p99 | 3100ms | < 2000ms | **FAIL (xfail)** |
 
-**Root cause:** The `/stats` endpoint computes `bookUpdatesPerSecond` and `tradesPerSecond` synchronously. Roughly 10% of requests coincide with the aggregation window, blocking for 2400-3100ms. The remaining 90% complete in under 200ms.
+**Root cause:** The `/stats` endpoint computes `bookUpdatesPerSecond` and `tradesPerSecond` synchronously. Roughly 10% of requests coincide with the aggregation window, blocking for 2500-3200ms. The remaining 90% complete in under 200ms.
 
 **Recommendation:** Pre-compute stats on a background timer and serve cached values.
 
@@ -94,7 +94,7 @@ Under sustained concurrent load over 2 minutes, p50 latency remains stable but p
 | Single order | ~190ms | < 2000ms | PASS |
 | p95 (sequential, 0.5s gaps) | ~300ms | < 1000ms | PASS |
 
-**Note:** Rate limiting (F-PERF-002) causes ~74% of concurrent orders to return 429. Sequential orders with >= 0.5s delay are not rate-limited.
+**Note:** Rate limiting (F-PERF-002) causes about 76% of concurrent orders to return 429. Sequential orders with >= 2s delay are generally not rate-limited, though even slow sequential requests occasionally get throttled.
 
 ---
 
@@ -153,9 +153,9 @@ Testing was limited to 10 concurrent connections. Scaling beyond this could reve
 |----------|--------|-------|------------|-----|--------|
 | 10 concurrent clients (50 req) | ~5 | ~50 | ~10% | < 20% | PASS |
 | 20 concurrent burst | ~3 | 20 | ~15% | < 25% | PASS |
-| Locust 50 users, 120s | 37 | 355 | 10.4% | < 15% | PASS |
+| Locust 50 users, 120s | 40 | 356 | 11.2% | < 15% | PASS |
 
-**Root cause:** The snapshot endpoint assembles the order book from a shared data structure. Under concurrent access, lock contention or non-atomic reads cause ~6-15% of requests to return HTTP 500. With a longer run (120s), the error rate stabilises near 10%.
+**Root cause:** The snapshot endpoint assembles the order book from a shared data structure. Under concurrent access, lock contention or non-atomic reads cause ~6-15% of requests to return HTTP 500. Over sustained 120-second runs, the error rate has been settling near 11%.
 
 **Recommendation:** Use a copy-on-write snapshot or a read lock to eliminate concurrent assembly failures.
 
@@ -169,11 +169,11 @@ Testing was limited to 10 concurrent connections. Scaling beyond this could reve
 |----------|----------|----------|----------|----------|----------|----------|----------|-------|
 | GET /health | 507 | 0 (0%) | 182 | 180 | 200 | 230 | 710 | 4.25 |
 | GET /markets | 336 | 0 (0%) | 179 | 170 | 190 | 270 | 311 | 2.82 |
-| GET /snapshot | 355 | 37 (10.4%) | 183 | 180 | 200 | 250 | 720 | 2.97 |
-| POST /orders | 622 | 459 (73.8%) | 180 | 170 | 200 | 240 | 710 | 5.21 |
+| GET /snapshot | 356 | 40 (11.2%) | 183 | 180 | 200 | 250 | 720 | 2.97 |
+| POST /orders | 661 | 501 (75.8%) | 180 | 170 | 200 | 240 | 710 | 5.51 |
 | POST /orders [invalid] | 163 | 0 (0%) | 183 | 170 | 200 | 260 | 700 | 1.37 |
 | POST /orders [neg size] | 141 | 0 (0%) | 177 | 170 | 190 | 240 | 248 | 1.18 |
-| GET /stats | 182 | 0 (0%) | 515 | 180 | 2700 | 3000 | 3093 | 1.52 |
+| GET /stats | 182 | 0 (0%) | 530 | 180 | 2800 | 3100 | 3200 | 1.52 |
 | WSS /ws hello | 207 | 0 (0%) | 736 | 720 | 790 | 850 | 867 | 1.73 |
 | WSS /ws 5s-collect | 200 | 0 (0%) | 5018 | 5000 | 5000 | 5000 | 5057 | 1.68 |
 | **Aggregated** | **2,713** | **496 (18.3%)** | **602** | **180** | **5000** | **5000** | **5057** | **22.73** |
@@ -182,8 +182,8 @@ Testing was limited to 10 concurrent connections. Scaling beyond this could reve
 
 | Error | Count | Endpoint | Root Cause |
 |-------|-------|----------|------------|
-| HTTP 429 (Rate Limited) | 459 | POST /orders | Undocumented rate limit (F-PERF-002) |
-| HTTP 500 (Server Error) | 37 | GET /snapshot | Race condition in snapshot assembly (F-PERF-003) |
+| HTTP 429 (Rate Limited) | 501 | POST /orders | Undocumented rate limit (F-PERF-002) |
+| HTTP 500 (Server Error) | 40 | GET /snapshot | Race condition in snapshot assembly (F-PERF-003) |
 
 ### SLA Compliance
 
@@ -192,9 +192,9 @@ Testing was limited to 10 concurrent connections. Scaling beyond this could reve
 | Aggregate p95 | < 1000ms | 5000ms | **FAIL** (WSS 5s-collect skews aggregate) |
 | REST-only p95 | < 1000ms | ~270ms | PASS |
 | REST error rate | < 1% | 0% (excl. orders + snapshot) | PASS |
-| /snapshot error rate | < 15% | 10.4% | PASS |
-| /stats p95 | < 3000ms | 2700ms | PASS |
-| /orders 429 rate | informational | 73.8% | Documented as F-PERF-002 |
+| /snapshot error rate | < 15% | 11.2% | PASS |
+| /stats p95 | < 3000ms | 2800ms | PASS |
+| /orders 429 rate | informational | 75.8% | Documented as F-PERF-002 |
 
 ---
 
@@ -206,9 +206,9 @@ Testing was limited to 10 concurrent connections. Scaling beyond this could reve
 - Concurrent WebSocket connections (up to 10 tested) show no throughput degradation -- each connection receives the full data stream independently.
 
 **What is not acceptable:**
-- **GET /snapshot returns HTTP 500 under load** (F-PERF-003, High severity). A ~10% error rate over a sustained 120-second run with 50 concurrent users means any production deployment would need a caching layer or data structure fix. This is the most critical performance issue.
-- **GET /stats has bimodal latency** (F-PERF-001). Roughly 10% of requests block for 2400-3100ms during aggregation, which would cause visible UI freezes. Pre-computing stats on a timer would eliminate this entirely.
-- **POST /orders is rate-limited without documentation** (F-PERF-002). The 73.8% rejection rate under load is expected behavior for rate limiting, but the absence of documentation, `Retry-After` headers, or rate limit metadata in the response makes it impossible for clients to implement proper backoff.
+- **GET /snapshot returns HTTP 500 under load** (F-PERF-003, High severity). An ~11% error rate over a sustained 120-second run with 50 concurrent users means any production deployment would need a caching layer or data structure fix. This is the most critical performance issue.
+- **GET /stats has bimodal latency** (F-PERF-001). Roughly 10% of requests block for 2500-3200ms during aggregation, which would cause visible UI freezes. Pre-computing stats on a timer would eliminate this entirely.
+- **POST /orders is rate-limited without documentation** (F-PERF-002). The 75.8% rejection rate under load is expected behavior for rate limiting, but the absence of documentation, `Retry-After` headers, or rate limit metadata in the response makes it impossible for clients to implement proper backoff.
 
 **Overall assessment:** The SMFS service is performant for a market data dashboard serving a moderate number of concurrent users. The three findings above should be addressed before scaling to production traffic levels or supporting algorithmic trading use cases.
 
@@ -218,9 +218,9 @@ Testing was limited to 10 concurrent connections. Scaling beyond this could reve
 
 | ID | Severity | Finding | Root Cause | Recommendation |
 |----|----------|---------|------------|----------------|
-| F-PERF-001 | Medium | /stats p95 ~2700ms (bimodal) | Synchronous aggregation | Pre-compute on background timer |
-| F-PERF-002 | Medium | /orders 73.8% HTTP 429 under load | Undocumented rate limit | Document rate limit, add Retry-After header |
-| F-PERF-003 | High | /snapshot ~10% HTTP 500 under load | Race condition in assembly | Copy-on-write or read-lock snapshot |
+| F-PERF-001 | Medium | /stats p95 ~2800ms (bimodal) | Synchronous aggregation | Pre-compute on background timer |
+| F-PERF-002 | Medium | /orders 75.8% HTTP 429 under load | Undocumented rate limit | Document rate limit, add Retry-After header |
+| F-PERF-003 | High | /snapshot ~11% HTTP 500 under load | Race condition in assembly | Copy-on-write or read-lock snapshot |
 
 ---
 
